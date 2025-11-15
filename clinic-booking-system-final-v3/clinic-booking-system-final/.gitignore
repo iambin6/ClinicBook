@@ -1,0 +1,3 @@
+application-secret.properties
+*.env
+.env
