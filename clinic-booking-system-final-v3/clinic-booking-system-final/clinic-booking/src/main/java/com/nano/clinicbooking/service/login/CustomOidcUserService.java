@@ -83,12 +83,18 @@ public class CustomOidcUserService extends OidcUserService {
             }
         }
 
-        return new DefaultOidcUser(
-                Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
-                oidcUser.getIdToken(),
-                oidcUser.getUserInfo(),
-                "sub"
-        );
+        return oidcUser.getUserInfo() != null
+                ? new DefaultOidcUser(
+                        Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
+                        oidcUser.getIdToken(),
+                        oidcUser.getUserInfo(),
+                        "sub"
+                )
+                : new DefaultOidcUser(
+                        Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
+                        oidcUser.getIdToken(),
+                        "sub"
+                );
     }
 }
 

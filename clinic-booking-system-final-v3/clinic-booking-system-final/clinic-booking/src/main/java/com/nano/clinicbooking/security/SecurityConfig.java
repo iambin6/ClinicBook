@@ -9,8 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -166,11 +164,9 @@ public class SecurityConfig {
                                      }
                                 })
                                 .failureHandler((req, res, ex) -> {
-                                    ex.printStackTrace();
-                                    System.err.println(">> OAuth2/OIDC FAILURE: " + ex.getMessage());
-                                    res.setStatus(401);
-                                    res.setContentType("text/plain;charset=UTF-8");
-                                    res.getWriter().write("OAuth2 ERROR: " + ex.getMessage());
+                                    log.error(">> OAuth2/OIDC FAILURE: ", ex);
+                                    String errorMsg = ex.getMessage() != null ? ex.getMessage() : "oauth2_failed";
+                                    res.sendRedirect(frontendUrl + "/login?error=" + java.net.URLEncoder.encode(errorMsg, java.nio.charset.StandardCharsets.UTF_8));
                                 })
                 )
                 .logout(logout -> logout
@@ -194,10 +190,5 @@ public class SecurityConfig {
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 }
