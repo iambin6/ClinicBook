@@ -126,7 +126,7 @@ public class AdminController {
 
     //còn /api/v1/admin/patients là lấy người dùng đki tài khoản
     //User-level Patient (người dùng bệnh nhân đăng ký tài khoản)
-    @PreAuthorize("hasAuthority('Admin', 'Receptionist')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'Receptionist')")
     @GetMapping("/patients")
     public ResponseEntity<ApiResponse> getAllPatients() {
         List<UserDto> patients = patientService.getAllPatients();

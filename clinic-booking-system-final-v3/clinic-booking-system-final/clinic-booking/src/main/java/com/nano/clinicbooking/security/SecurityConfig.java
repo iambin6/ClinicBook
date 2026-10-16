@@ -82,9 +82,10 @@ public class SecurityConfig {
                         //  Cho phép tạo admin lần đầu (không cần token)
                         .requestMatchers("/auth/register-admin").permitAll()
 
-                        // Cho phép GET danh sách chuyên khoa (hiển thị công khai)
+                        // Cho phép GET danh sách chuyên khoa & bác sĩ (hiển thị công khai)
                         .requestMatchers(HttpMethod.GET, "/specialties/all").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/public/specialties/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/doctors/**").permitAll()
 
                         //  Cho phép chatbot  cần đăng nhập
                         .requestMatchers(HttpMethod.POST, "/chat/ask").authenticated()
