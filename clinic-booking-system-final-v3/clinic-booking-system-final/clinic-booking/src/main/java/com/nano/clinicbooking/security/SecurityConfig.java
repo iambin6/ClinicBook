@@ -2,7 +2,9 @@ package com.nano.clinicbooking.security;
 
 import com.nano.clinicbooking.service.login.CustomOidcUserService;
 import com.nano.clinicbooking.service.login.FacebookOAuth2UserService;
+import com.nano.clinicbooking.repository.search_user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +23,7 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import java.util.List;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
@@ -28,12 +31,14 @@ import java.util.List;
 @CrossOrigin
 public class SecurityConfig {
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:https://clinicbooking-j9r1.onrender.com}")
     private String frontendUrl;
 
     private final JwtFilter jwtFilter; // ✅ inject filter
     private final CustomOidcUserService customOidcUserService;
     private final FacebookOAuth2UserService FacebookOAuth2UserService;
+    private final UserRepository userRepository;
+    private final JwtService jwtService;
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -71,13 +76,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        //  Cho phép public các API đăng nhập / đăng ký
-                        .requestMatchers("/auth/**").permitAll()
-
                         //  Cho phép OAuth2 callback
                         .requestMatchers("/login/oauth2/code/**").permitAll()
-                        .requestMatchers("/auth/oauth2/user-info").authenticated()
+                        .requestMatchers("/auth/oauth2/user-info").permitAll()
                         .requestMatchers("/auth/oauth2/logout").permitAll()
+
+                        //  Cho phép public các API đăng nhập / đăng ký
+                        .requestMatchers("/auth/**").permitAll()
 
                         //  Cho phép tạo admin lần đầu (không cần token)
                         .requestMatchers("/auth/register-admin").permitAll()
@@ -129,9 +134,36 @@ public class SecurityConfig {
                                 )
 
                                 .successHandler((req, res, auth) -> {
-                                    System.out.println(">> OAuth2/OIDC SUCCESS for: " + auth.getName());
-                                    // Redirect về frontend callback page
-                                    res.sendRedirect(frontendUrl + "/oauth2/callback");
+                                    try {
+                                         log.info(">> OAuth2/OIDC SUCCESS for: {}", auth.getName());
+                                         String email = null;
+                                         if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidcUser) {
+                                             email = oidcUser.getEmail();
+                                             if (email == null) {
+                                                 Object em = oidcUser.getAttributes().get("email");
+                                                 email = em == null ? null : String.valueOf(em);
+                                             }
+                                         } else if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oauth2User) {
+                                             Object em = oauth2User.getAttributes().get("email");
+                                             email = em == null ? null : String.valueOf(em);
+                                         }
+
+                                         if (email != null && !email.isBlank()) {
+                                             com.nano.clinicbooking.model.User user = userRepository.findByEmail(email).orElse(null);
+                                             if (user != null) {
+                                                 String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getUserType());
+                                                 log.info(">> Generated JWT for OAuth2 user {}: role={}", email, user.getUserType());
+                                                 String target = frontendUrl + "/oauth2/callback?token=" + java.net.URLEncoder.encode(token, java.nio.charset.StandardCharsets.UTF_8);
+                                                 res.sendRedirect(target);
+                                                 return;
+                                             }
+                                         }
+                                         // Fallback nếu không tìm thấy user
+                                         res.sendRedirect(frontendUrl + "/oauth2/callback");
+                                     } catch (Exception ex) {
+                                         log.error(">> Error in OAuth2 successHandler: ", ex);
+                                         res.sendRedirect(frontendUrl + "/login?error=oauth2_failed");
+                                     }
                                 })
                                 .failureHandler((req, res, ex) -> {
                                     ex.printStackTrace();

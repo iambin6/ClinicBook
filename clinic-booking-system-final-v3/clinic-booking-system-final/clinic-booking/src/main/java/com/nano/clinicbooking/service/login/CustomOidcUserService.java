@@ -6,6 +6,7 @@ import com.nano.clinicbooking.repository.patient.PatientRepository;
 import com.nano.clinicbooking.repository.search_user.UserRepository;
 import com.nano.clinicbooking.service.email.send_register.AiEmailService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
@@ -18,21 +19,28 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.Collections;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomOidcUserService extends OidcUserService {
 
     private final UserRepository userRepository;
     private final PatientRepository patientRepository;
-    private final AiEmailService aiEmailService;//moi them
+    private final AiEmailService aiEmailService;
 
     @Override
     @Transactional
     public OidcUser loadUser(OidcUserRequest req) {
+        log.info(">> Google OIDC loadUser started for client: {}", req.getClientRegistration().getRegistrationId());
         OidcUser oidcUser = super.loadUser(req);
 
-        String email = oidcUser.getEmail(); // hoặc: (String) oidcUser.getAttributes().get("email")
+        String email = oidcUser.getEmail();
         if (email == null || email.isBlank()) {
+            Object emailAttr = oidcUser.getAttributes().get("email");
+            email = emailAttr == null ? null : String.valueOf(emailAttr);
+        }
+        if (email == null || email.isBlank()) {
+            log.error("Google account has no email");
             throw new IllegalStateException("Google account has no email");
         }
 
@@ -43,13 +51,13 @@ public class CustomOidcUserService extends OidcUserService {
             fullName = (given + " " + family).trim();
             if (fullName.isBlank()) fullName = email;
         }
-//        fix lai ngay 29/10/2025
-//  Thêm dòng này trước khi dùng trong lambda
+
         boolean isFirstLogin = false;
-        //  Nếu user chưa có thì tạo Patient thay vì User
         User user = userRepository.findByEmail(email).orElse(null);
+
         if (user == null) {
-            // lần đầu → tạo Patient (kế thừa User)
+            // Lần đầu -> tạo Patient mới
+            log.info("Google user not found. Creating new Patient for: {}", email);
             Patient p = new Patient();
             p.setEmail(email);
             p.setPassword("{noop}GOOGLE_LOGIN");
@@ -59,35 +67,28 @@ public class CustomOidcUserService extends OidcUserService {
             user = patientRepository.save(p);
             isFirstLogin = true;
         } else {
-            // đã tồn tại → cập nhật thông tin cơ bản
+            // Đã tồn tại -> cập nhật thông tin cơ bản, giữ nguyên vai trò (Admin, Doctor, etc.)
+            log.info("Google user already exists: {} with role: {}", email, user.getUserType());
             user.setFullName(fullName);
-            user.setUserType("Patient");
             user.setIsEnable(true);
             userRepository.save(user);
         }
-        // GỬI EMAIL SAU KHI TRANSACTION COMMIT (chỉ lần đầu)
+
         if (isFirstLogin) {
-            final User u = user; // capture to lambda
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        aiEmailService.sendRegisterSuccessEmail(u);
-                        System.out.println("Welcome email sent to " + u.getEmail());
-                    } catch (Exception ex) {
-                        // không dùng logger thì in console để còn thấy lỗi
-                        ex.printStackTrace();
-                    }
-                }
-            });
+            try {
+                aiEmailService.sendRegisterSuccessEmail(user);
+                log.info("Welcome email triggered for: {}", email);
+            } catch (Exception ex) {
+                log.warn("Cannot send welcome email for Google user {}: {}", email, ex.getMessage());
+            }
         }
-            // trả về principal OIDC
-            return new DefaultOidcUser(
-                    Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
-                    oidcUser.getIdToken(),
-                    oidcUser.getUserInfo(),
-                    "sub"
-            );
-        }
+
+        return new DefaultOidcUser(
+                Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
+                oidcUser.getIdToken(),
+                oidcUser.getUserInfo(),
+                "sub"
+        );
     }
+}
 

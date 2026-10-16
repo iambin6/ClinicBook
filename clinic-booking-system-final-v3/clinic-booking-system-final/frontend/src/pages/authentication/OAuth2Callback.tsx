@@ -10,6 +10,61 @@ export default function OAuth2Callback() {
   useEffect(() => {
     (async () => {
       try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlToken = searchParams.get('token');
+
+        if (urlToken) {
+          // Parse JWT claims
+          let userId = '0';
+          let email = '';
+          let userType = 'Patient';
+          try {
+            const payloadBase64 = urlToken.split('.')[1];
+            const decodedJson = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+            userId = String(decodedJson.userId || '');
+            email = String(decodedJson.sub || '');
+            userType = String(decodedJson.role || 'Patient');
+          } catch {
+            // ignore parse error
+          }
+
+          // Try fetching user profile from /users/me
+          try {
+            const meRes = await fetch(`${base}/users/me`, {
+              headers: { Authorization: `Bearer ${urlToken}` },
+            });
+            if (meRes.ok) {
+              const meData = await meRes.json();
+              const u = meData.data;
+              login(
+                {
+                  id: String(u.id),
+                  fullName: u.fullName || email,
+                  email: u.email || email,
+                  userType: u.userType || userType,
+                },
+                urlToken
+              );
+              navigate('/', { replace: true });
+              return;
+            }
+          } catch {
+            // fallback below
+          }
+
+          login(
+            {
+              id: userId,
+              fullName: email,
+              email: email,
+              userType: userType as any,
+            },
+            urlToken
+          );
+          navigate('/', { replace: true });
+          return;
+        }
+
         const backendBase = base;
         
         const res = await fetch(`${backendBase}/auth/oauth2/user-info`, {

@@ -29,6 +29,13 @@ public class OAuth2Controller {
     @GetMapping("/oauth2/user-info")
     public ResponseEntity<Map<String, Object>> getOAuth2UserInfo(Authentication authentication) {
         try {
+            if (authentication == null) {
+                log.warn("OAuth2 user-info called without authentication");
+                return ResponseEntity.status(401).body(Map.of(
+                        "success", false,
+                        "message", "User not authenticated"
+                ));
+            }
             log.info("Getting OAuth2 user info for: {}", authentication.getName());
 
             String email = null;

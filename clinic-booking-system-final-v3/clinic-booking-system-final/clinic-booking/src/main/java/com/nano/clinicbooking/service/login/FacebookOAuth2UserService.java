@@ -63,25 +63,18 @@ public class FacebookOAuth2UserService implements OAuth2UserService<OAuth2UserRe
             user = patientRepository.save(p);
             isFirstLogin = true;
         } else {
-            // Đã tồn tại → cập nhật thông tin cơ bản
+            // Đã tồn tại → cập nhật thông tin cơ bản, giữ nguyên role
             user.setFullName(name);
-            user.setUserType("Patient");
             user.setIsEnable(true);
             userRepository.save(user);
         }
-        // Gửi email chào mừng SAU KHI COMMIT (chỉ lần đầu)
+        // Gửi email chào mừng (chỉ lần đầu)
         if (isFirstLogin) {
-            final User u = user;
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        aiEmailService.sendRegisterSuccessEmail(u);
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
-            });
+            try {
+                aiEmailService.sendRegisterSuccessEmail(user);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         }
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")),
