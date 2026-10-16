@@ -61,7 +61,7 @@ export async function registerApi(payload: RegistrationInput): Promise<RegisterR
 }
 
 export function registerAdminApi(payload: RegistrationInput) {
-  return http.post('/admin/register-admin', payload);
+  return http.post('/auth/register-admin', payload);
 }
 
 // Forgot Password

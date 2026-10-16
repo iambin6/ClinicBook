@@ -77,8 +77,12 @@ public class RagChatService {
     }
 
     @PostConstruct
-    public void init() throws Exception {
-        ensureCollection(768); // đổi 768 nếu model embedding khác kích thước
+    public void init() {
+        try {
+            ensureCollection(768); // đổi 768 nếu model embedding khác kích thước
+        } catch (Exception ex) {
+            log.warn("Không thể kết nối đến Qdrant Server. Tính năng Chatbot RAG sẽ tạm thời không khả dụng: {}", ex.getMessage());
+        }
     }
 
     private void ensureCollection(int embeddingDim) throws Exception {

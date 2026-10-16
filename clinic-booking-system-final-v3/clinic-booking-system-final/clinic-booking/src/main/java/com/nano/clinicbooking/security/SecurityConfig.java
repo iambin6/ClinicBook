@@ -3,6 +3,7 @@ package com.nano.clinicbooking.security;
 import com.nano.clinicbooking.service.login.CustomOidcUserService;
 import com.nano.clinicbooking.service.login.FacebookOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,6 +28,9 @@ import java.util.List;
 @CrossOrigin
 public class SecurityConfig {
 
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     private final JwtFilter jwtFilter; // ✅ inject filter
     private final CustomOidcUserService customOidcUserService;
     private final FacebookOAuth2UserService FacebookOAuth2UserService;
@@ -40,7 +44,12 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(req -> {
                     var c = new CorsConfiguration();
-                    c.setAllowedOriginPatterns(List.of("http://localhost:5173"));
+                    c.setAllowedOriginPatterns(List.of(
+                            frontendUrl,
+                            "http://localhost:5173",
+                            "http://localhost:3000",
+                            "https://*.onrender.com"
+                    ));
                     c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
                     c.setAllowedHeaders(List.of("*"));
                     c.setAllowCredentials(true);
@@ -121,7 +130,7 @@ public class SecurityConfig {
                                 .successHandler((req, res, auth) -> {
                                     System.out.println(">> OAuth2/OIDC SUCCESS for: " + auth.getName());
                                     // Redirect về frontend callback page
-                                    res.sendRedirect("http://localhost:5173/oauth2/callback");
+                                    res.sendRedirect(frontendUrl + "/oauth2/callback");
                                 })
                                 .failureHandler((req, res, ex) -> {
                                     ex.printStackTrace();

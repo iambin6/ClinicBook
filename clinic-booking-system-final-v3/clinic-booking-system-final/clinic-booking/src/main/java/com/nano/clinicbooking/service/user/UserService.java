@@ -24,10 +24,14 @@ public class UserService implements IUserService {
 
     @Override
     public User register(RegistrationRequest request) {
-            User user = userFactory.createUser(request);
+        User user = userFactory.createUser(request);
+        try {
             aiEmailService.sendRegisterSuccessEmail(user);
-            return user;
-        } // moi thay doi
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi email chào mừng (không ảnh hưởng đăng ký): " + e.getMessage());
+        }
+        return user;
+    }
     @Override
     public User update(Long userId, String role, UserUpdateRequest request) {
         if (!"Patient".equals(role)) {
