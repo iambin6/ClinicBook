@@ -212,9 +212,8 @@ export default function Appointment() {
       const me = arr?.[0];
       if (me) {
         setFullName(me.fullName || "");
-        const g = String(me.gender || "").toUpperCase();
         const mapped = g === "MALE" ? "Male" : g === "FEMALE" ? "Female" : g === "OTHER" ? "Other" : "";
-        setGender(mapped as unknown);
+        setGender(mapped as Gender | "");
         setPhoneNumber(me.phoneNumber || "");
         setAddress(me.address || "");
         setDob(me.dob || "");

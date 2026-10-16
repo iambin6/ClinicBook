@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Button } from 'react-bootstrap';
 import { askChatbot, type ChatMessage } from '../../api/chatbot';
 import '../../styles/chatbot.css';
 

@@ -38,7 +38,7 @@ function mapApiDoctorToCard(doctor: ApiDoctor): DoctorCard {
     fullName: doctor.fullName,
     degree: doctor.degree,
     specialtyName: doctor.specialtyName ?? specialization,
-    avatarUrl,
+    avatarUrl: avatarUrl || undefined,
     email: doctor.email,
     phoneNumber: doctor.phoneNumber,
     description: doctor.description,

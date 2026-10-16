@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, Col, Row, Spinner, Modal, Table, Form, InputGroup, Badge } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { http } from "../../api/http";
 import { fetchAllShiftsByDate } from "../../api/shift";
 import { fetchAllByDate, toISODateInput } from "../../api/appointment";
 import { fetchReceptionEvents } from "../../api/receptionist";

@@ -10,8 +10,7 @@ import Step4 from "./steps/Step4";
 
 export default function Appointment() {
   const { state, dispatch } = useAppt();
-  const [sp, setSp] = useSearchParams();
-  const [loadingDoctor, setLoadingDoctor] = useState(false);
+  const [sp] = useSearchParams();
 
   // đọc step từ URL
   useEffect(() => {
@@ -35,7 +34,6 @@ export default function Appointment() {
       if (!isNaN(doctorId)) {
         // Chỉ fetch nếu doctorId trong URL khác với state hiện tại
         if (state.doctorId !== doctorId) {
-          setLoadingDoctor(true);
           fetchDoctorById(doctorId)
             .then((doctor) => {
               // Nếu có specialtyId trong URL, kiểm tra xem có match với doctor không

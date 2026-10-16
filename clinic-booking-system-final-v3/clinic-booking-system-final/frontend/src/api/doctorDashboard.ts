@@ -1,6 +1,4 @@
 import { http } from './http';
-import type { Appointment } from './appointment';
-import type { DoctorShift } from './shift';
 
 export interface DoctorDashboardStats {
   totalAppointments: number;
