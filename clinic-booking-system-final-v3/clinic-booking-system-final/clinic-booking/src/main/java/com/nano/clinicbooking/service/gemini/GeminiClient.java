@@ -2,6 +2,7 @@ package com.nano.clinicbooking.service.gemini;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,13 +14,14 @@ import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.List;
 
+@Slf4j
 @Component
 public class GeminiClient {
 
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-2.5-flash}")
+    @Value("${gemini.model:gemini-1.5-flash}")
     private String defaultModel;
 
     @Value("${gemini.api.base:https://generativelanguage.googleapis.com/v1beta}")
@@ -41,11 +43,14 @@ public class GeminiClient {
     }
 
     public String generateHtml(String prompt) {
-        return generateHtml(prompt, List.of(defaultModel, "gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"));
+        return generateHtml(prompt, List.of(defaultModel, "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"));
     }
 
     public String generateHtml(String prompt, List<String> models) {
-        if (apiKey == null || apiKey.isBlank()) return null;
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn(">> [GeminiClient] GEMINI_API_KEY is null or empty!");
+            return null;
+        }
 
         String body = """
             {"contents":[{"role":"user","parts":[{"text":%s}]}]}
@@ -72,21 +77,33 @@ public class GeminiClient {
 
                     if (code == 200) {
                         String html = extractFirstText(resp.body());
-                        if (html != null && !html.isBlank()) return html.trim();
+                        if (html != null && !html.isBlank()) {
+                            log.info(">> [GeminiClient] Response generated successfully with model: {}", mdl);
+                            return html.trim();
+                        }
+                        log.warn(">> [GeminiClient] Empty candidate returned by model: {}", mdl);
                         break; // rỗng -> thử model khác
                     }
-                    if (code == 404) break;                 // model không tồn tại -> model khác
-                    if (code == 401 || code == 403) return null; // key lỗi -> dừng, cho lớp gọi fallback
+                    if (code == 404) {
+                        log.warn(">> [GeminiClient] Model {} not found (HTTP 404), trying next model...", mdl);
+                        break; // model không tồn tại -> model khác
+                    }
+                    if (code == 401 || code == 403) {
+                        log.error(">> [GeminiClient] Google Gemini API Key Error (HTTP {}): {}", code, resp.body());
+                        return null; // key lỗi/suspended -> dừng
+                    }
 
                     if (code == 429 || (code >= 500 && code < 600)) {
+                        log.warn(">> [GeminiClient] Rate limit/Server error (HTTP {}), retrying in {}ms...", code, backoffMs);
                         Thread.sleep(backoffMs);
                         backoffMs *= 2;
                         continue;
                     }
+                    log.error(">> [GeminiClient] Unexpected response (HTTP {}): {}", code, resp.body());
                     break; // lỗi khác -> bỏ model này
 
                 } catch (HttpTimeoutException e) {
-                    // TIMEOUT -> báo lớp gọi fallback
+                    log.error(">> [GeminiClient] Timeout occurred while calling model {}", mdl);
                     return null;
 
                 } catch (InterruptedException ie) {
@@ -94,7 +111,7 @@ public class GeminiClient {
                     return null;
 
                 } catch (Exception ex) {
-                    // lỗi tạm -> retry
+                    log.warn(">> [GeminiClient] Exception on attempt {} for model {}: {}", attempt, mdl, ex.getMessage());
                     try { Thread.sleep(backoffMs); } catch (InterruptedException ignored) {
                         Thread.currentThread().interrupt();
                         return null;
@@ -103,6 +120,7 @@ public class GeminiClient {
                 }
             }
         }
+        log.error(">> [GeminiClient] All Gemini models failed to generate response.");
         return null; // hết cách -> fallback ở lớp gọi
     }
 

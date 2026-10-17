@@ -114,13 +114,21 @@ public class RagChatService {
 
     public String ask(String question) {
         try {
-            // 0) Intro rõ ràng → trả lời ngay
+            if (question == null || question.isBlank()) {
+                return "Dạ bạn cần Nano Clinic hỗ trợ thông tin gì ạ?";
+            }
+
+            // 0) Lời chào thân thiện (hi, hello, xin chào...)
+            if (isGreetingIntent(question)) {
+                return "Xin chào bạn! 👋 Tôi là trợ lý ảo của phòng khám **Nano Clinic** (Đà Nẵng). Tôi có thể giúp bạn tìm thông tin về bác sĩ, chuyên khoa, lịch khám và các sự kiện ưu đãi. Bạn cần hỗ trợ gì ạ?";
+            }
+
+            // 1) Giới thiệu phòng khám
             if (isIntroIntent(question)) {
                 String ai = tryIntroWithAI(question);
                 if (ai != null && !ai.isBlank()) return ai.trim();
                 return getClinicIntro();
             }
-
 
             // 2) Còn lại → trả lời theo unified data (events/doctors/shifts + RAG)
             return answerWithUnifiedData(question);
@@ -166,9 +174,12 @@ public class RagChatService {
 
         // 4) Gọi model và trả lời
         String answer = gemini.generateHtml(prompt);
-        return (answer == null || answer.isBlank())
-                ? "Xin lỗi, hiện chưa thể trả lời câu hỏi này."
-                : answer.trim();
+        if (answer != null && !answer.isBlank()) {
+            return answer.trim();
+        }
+
+        log.warn(">> Gemini AI trả về null hoặc rỗng cho câu hỏi: '{}'", question);
+        return "Xin lỗi bạn, hiện tại kết nối đến trợ lý AI đang bị gián đoạn. Nếu bạn cần hỗ trợ gấp hoặc đặt lịch khám, vui lòng liên hệ hotline: **032594011** hoặc đến trực tiếp tại **123 Nguyễn Văn Linh, Đà Nẵng** để được hỗ trợ nhanh nhất nhé!";
     }
 
     /* PROMPT BUILDER  */
@@ -221,6 +232,16 @@ public class RagChatService {
     }
 
     /*  INTENT HELPERS  */
+
+    private boolean isGreetingIntent(String q) {
+        if (q == null) return false;
+        String s = q.trim().toLowerCase().replaceAll("[!?,.]+$", "").trim();
+        return s.equals("hi") || s.equals("hello") || s.equals("hey")
+                || s.equals("xin chào") || s.equals("chào") || s.equals("chào bạn")
+                || s.equals("alo") || s.equals("chào bot") || s.equals("hi bot")
+                || s.equals("hello bot") || s.startsWith("xin chào")
+                || s.startsWith("chào bạn");
+    }
 
     private boolean isIntroIntent(String q) {
         if (q == null) return false;
