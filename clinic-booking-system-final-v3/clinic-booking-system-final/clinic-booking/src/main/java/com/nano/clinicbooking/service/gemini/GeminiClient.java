@@ -21,7 +21,7 @@ public class GeminiClient {
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-1.5-flash}")
+    @Value("${gemini.model:gemini-2.0-flash}")
     private String defaultModel;
 
     @Value("${gemini.api.base:https://generativelanguage.googleapis.com/v1beta}")
@@ -43,7 +43,7 @@ public class GeminiClient {
     }
 
     public String generateHtml(String prompt) {
-        return generateHtml(prompt, List.of(defaultModel, "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"));
+        return generateHtml(prompt, List.of(defaultModel, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"));
     }
 
     public String generateHtml(String prompt, List<String> models) {
