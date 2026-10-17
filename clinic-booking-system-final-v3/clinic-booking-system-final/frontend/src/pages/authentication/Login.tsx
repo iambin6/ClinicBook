@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { loginApi } from '../../api/auth';
@@ -15,8 +15,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [failedOnce, setFailedOnce] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showSuccess } = useToast();
   const { login } = useAuth();
+
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err) {
+      setError(decodeURIComponent(err));
+    }
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

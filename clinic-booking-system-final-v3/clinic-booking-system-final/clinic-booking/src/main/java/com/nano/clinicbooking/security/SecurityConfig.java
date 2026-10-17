@@ -166,6 +166,16 @@ public class SecurityConfig {
                                 .failureHandler((req, res, ex) -> {
                                     log.error(">> OAuth2/OIDC FAILURE: ", ex);
                                     String errorMsg = ex.getMessage() != null ? ex.getMessage() : "oauth2_failed";
+                                    Throwable cause = ex.getCause();
+                                    while (cause != null) {
+                                        if (cause instanceof org.springframework.web.client.RestClientResponseException restEx) {
+                                            String body = restEx.getResponseBodyAsString();
+                                            log.error(">> OAuth2 Token Response Body: {}", body);
+                                            errorMsg += " -> " + body;
+                                            break;
+                                        }
+                                        cause = cause.getCause();
+                                    }
                                     res.sendRedirect(frontendUrl + "/login?error=" + java.net.URLEncoder.encode(errorMsg, java.nio.charset.StandardCharsets.UTF_8));
                                 })
                 )
