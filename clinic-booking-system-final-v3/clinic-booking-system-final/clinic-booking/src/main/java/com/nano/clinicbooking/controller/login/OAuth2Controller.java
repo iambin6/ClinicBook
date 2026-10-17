@@ -5,6 +5,7 @@ import com.nano.clinicbooking.repository.search_user.UserRepository;
 import com.nano.clinicbooking.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -25,6 +26,33 @@ public class OAuth2Controller {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+
+    @Value("${spring.security.oauth2.client.registration.google.client-id:}")
+    private String googleClientId;
+
+    @Value("${spring.security.oauth2.client.registration.google.client-secret:}")
+    private String googleClientSecret;
+
+    @Value("${app.frontend.url:https://clinicbooking-j9r1.onrender.com}")
+    private String frontendUrl;
+
+    @GetMapping("/oauth2/status")
+    public ResponseEntity<Map<String, Object>> getOAuth2Status() {
+        Map<String, Object> status = new HashMap<>();
+        boolean hasClientId = googleClientId != null && !googleClientId.isBlank();
+        boolean hasSecret = googleClientSecret != null && !googleClientSecret.isBlank();
+        
+        status.put("googleClientIdConfigured", hasClientId);
+        status.put("googleClientIdPrefix", hasClientId ? googleClientId.substring(0, Math.min(12, googleClientId.length())) + "..." : "NONE");
+        status.put("googleClientSecretConfigured", hasSecret);
+        status.put("googleClientSecretLength", hasSecret ? googleClientSecret.length() : 0);
+        status.put("googleClientSecretPrefix", (hasSecret && googleClientSecret.length() >= 7) ? googleClientSecret.substring(0, 7) : "NONE");
+        status.put("googleClientSecretSuffix", (hasSecret && googleClientSecret.length() >= 4) ? googleClientSecret.substring(googleClientSecret.length() - 4) : "NONE");
+        status.put("hasQuotes", hasSecret && (googleClientSecret.startsWith("\"") || googleClientSecret.endsWith("\"") || googleClientSecret.startsWith("'") || googleClientSecret.endsWith("'")));
+        status.put("hasWhitespace", hasSecret && (googleClientSecret.startsWith(" ") || googleClientSecret.endsWith(" ") || googleClientSecret.contains(" ")));
+        status.put("frontendUrl", frontendUrl);
+        return ResponseEntity.ok(status);
+    }
 
     @GetMapping("/oauth2/user-info")
     public ResponseEntity<Map<String, Object>> getOAuth2UserInfo(Authentication authentication) {
