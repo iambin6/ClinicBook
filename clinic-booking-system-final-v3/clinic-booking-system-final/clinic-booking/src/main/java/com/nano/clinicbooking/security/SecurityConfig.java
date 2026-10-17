@@ -82,6 +82,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/health").permitAll()
                         //  Cho phép OAuth2 callback
                         .requestMatchers("/login/oauth2/code/**").permitAll()
                         .requestMatchers("/auth/oauth2/user-info").permitAll()
@@ -118,7 +119,9 @@ public class SecurityConfig {
                         // FE đọc tin tức
                         .requestMatchers(HttpMethod.GET, "/rss-sources/news/**").authenticated()
 
-                        // Cho phép tất cả roles xem events và vouchers
+                        // Public event listings are shown on the guest home page.
+                        .requestMatchers(HttpMethod.GET, "/events", "/events/", "/events/all").permitAll()
+                        // Personal registrations and management endpoints remain protected.
                         .requestMatchers(HttpMethod.GET, "/events/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/events/my").authenticated()
                         .requestMatchers(HttpMethod.POST, "/events/{eventId}/register").authenticated()

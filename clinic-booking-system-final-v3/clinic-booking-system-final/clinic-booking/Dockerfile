@@ -11,7 +11,8 @@ FROM eclipse-temurin:22-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=10000
+ENV SPRING_PROFILES_ACTIVE=render
+EXPOSE 10000
 
-ENTRYPOINT ["java", "-Xmx350m", "-Xms200m", "-XX:+UseSerialGC", "-Xss512k", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:InitialRAMPercentage=15.0", "-XX:MaxRAMPercentage=60.0", "-XX:+UseSerialGC", "-XX:+ExitOnOutOfMemoryError", "-Xss512k", "-jar", "app.jar"]

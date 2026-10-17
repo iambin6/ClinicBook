@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Col, Row, Spinner } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 import {
   fetchAvailableEvents,
   fetchRegisteredEventIds,
@@ -35,6 +37,9 @@ function formatVoucher(event: UserEventItem): string {
 }
 
 export default function UpcomingEvents() {
+  const { user, userType, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const canRegister = isAuthenticated && userType === "Patient";
   const [events, setEvents] = useState<UserEventItem[]>([]);
   const [registeredIds, setRegisteredIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,13 +53,9 @@ export default function UpcomingEvents() {
       setLoading(true);
       setError("");
       try {
-        const [list, registered] = await Promise.all([
-          fetchAvailableEvents(),
-          fetchRegisteredEventIds(),
-        ]);
+        const list = await fetchAvailableEvents();
         if (mounted) {
           setEvents(list);
-          setRegisteredIds(registered);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Không thể tải sự kiện.";
@@ -68,6 +69,19 @@ export default function UpcomingEvents() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    setRegisteredIds([]);
+    // Personal registrations are only available to authenticated patients.
+    if (!canRegister) return;
+    fetchRegisteredEventIds()
+      .then((registered) => { if (mounted) setRegisteredIds(registered); })
+      .catch((err: unknown) => {
+        if (mounted) setError(err instanceof Error ? err.message : "Không thể tải thông tin đăng ký.");
+      });
+    return () => { mounted = false; };
+  }, [canRegister, user?.id]);
+
   const upcomingEvents = useMemo(
     () =>
       [...events].sort((a, b) => {
@@ -79,6 +93,11 @@ export default function UpcomingEvents() {
   );
 
   const handleRegister = async (eventId: number) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+    if (!canRegister) return;
     setRegisteringId(eventId);
     setError("");
     setSuccessMessage("");
@@ -153,7 +172,7 @@ export default function UpcomingEvents() {
                       <Button
                         variant="primary"
                         onClick={() => handleRegister(event.id)}
-                        disabled={registeringId === event.id}
+                        disabled={registeringId === event.id || (isAuthenticated && !canRegister)}
                         className="w-100"
                       >
                         {registeringId === event.id ? (
@@ -162,7 +181,7 @@ export default function UpcomingEvents() {
                             Đang đăng ký...
                           </>
                         ) : (
-                          "Đăng ký tham gia"
+                          !isAuthenticated ? "Đăng nhập để đăng ký" : canRegister ? "Đăng ký tham gia" : "Chỉ dành cho bệnh nhân"
                         )}
                       </Button>
                     )}

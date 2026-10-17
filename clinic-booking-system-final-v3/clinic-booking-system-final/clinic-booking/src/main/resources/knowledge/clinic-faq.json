@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "payload": {
+      "text": "Quy trình đặt lịch: bệnh nhân đăng nhập, chọn chuyên khoa và bác sĩ, chọn ngày và ca khám, điền thông tin người khám rồi kiểm tra thông tin trước khi gửi yêu cầu. Lịch hẹn mới chờ xác nhận; bệnh nhân theo dõi trạng thái trong mục lịch hẹn của mình.",
+      "source": "project:AppointmentContext,AppointmentCreationService"
+    }
+  },
+  {
+    "id": 2,
+    "payload": {
+      "text": "Hủy lịch khám: hệ thống không cho hủy lịch đã hoàn tất, không cho hủy khi còn dưới 48 giờ trước giờ hẹn và yêu cầu lịch có đủ ngày giờ. Khi tổng số lần hủy đạt ba lần, tài khoản bệnh nhân bị khóa theo quy tắc đang triển khai.",
+      "source": "project:AppointmentStatusService"
+    }
+  },
+  {
+    "id": 3,
+    "payload": {
+      "text": "Khám trực tuyến: bệnh nhân đặt lịch loại ONLINE, thanh toán qua VNPay, sau khi thanh toán thành công hệ thống xác nhận lịch và tạo đường dẫn phòng khám Jitsi. Bệnh nhân chỉ được lấy thông tin phòng khám trực tuyến của lịch thuộc tài khoản mình và đã được xác nhận.",
+      "source": "project:PaymentController,AppointmentOnlineService"
+    }
+  },
+  {
+    "id": 4,
+    "payload": {
+      "text": "Quy trình khám trực tiếp: lễ tân xác nhận lịch và check-in, bác sĩ bắt đầu khám, kê đơn và hoàn tất buổi khám. Hệ thống yêu cầu đã có đơn thuốc trước khi hoàn tất lịch khám.",
+      "source": "project:AppointmentStatusService"
+    }
+  },
+  {
+    "id": 5,
+    "payload": {
+      "text": "Sự kiện và ưu đãi: khách có thể xem danh sách sự kiện công khai. Đăng ký tham gia và xem mục Sự kiện của tôi cần đăng nhập bằng tài khoản bệnh nhân. Tài khoản bác sĩ, lễ tân và quản trị viên không dùng chức năng đăng ký sự kiện dành cho bệnh nhân.",
+      "source": "project:UserEventController,UpcomingEvents"
+    }
+  }
+]

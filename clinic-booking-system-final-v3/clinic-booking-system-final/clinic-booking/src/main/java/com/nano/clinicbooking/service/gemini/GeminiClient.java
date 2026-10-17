@@ -6,147 +6,179 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
 public class GeminiClient {
-
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-2.0-flash}")
+    @Value("${gemini.model:gemini-3.5-flash-lite}")
     private String defaultModel;
+
+    @Value("${gemini.fallback-models:}")
+    private String fallbackModels;
+
+    @Value("${gemini.embedding.model:gemini-embedding-2}")
+    private String embeddingModel;
 
     @Value("${gemini.api.base:https://generativelanguage.googleapis.com/v1beta}")
     private String apiBase;
 
-    // Timeout mỗi request (ms). Quá mức này -> ném HttpTimeoutException -> return null.
-    @Value("${gemini.timeout.ms:100000}")
+    @Value("${gemini.timeout.ms:20000}")
     private int timeoutMs;
 
-    private final ObjectMapper mapper = new ObjectMapper();
-    private final HttpClient http = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
-            .connectTimeout(Duration.ofSeconds(15))
-            .build();
+    @Value("${gemini.max-attempts:2}")
+    private int maxAttempts;
 
-    private String endpointFor(String mdl) {
-        String base = apiBase == null ? "" : apiBase.replaceAll("/+$", "");
-        return String.format("%s/models/%s:generateContent?key=%s", base, mdl, apiKey);
+    @Value("${gemini.retry-delay.ms:400}")
+    private int retryDelayMs;
+
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final HttpClient http;
+
+    public GeminiClient() {
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+    }
+
+    GeminiClient(HttpClient http) {
+        this.http = http;
     }
 
     public String generateHtml(String prompt) {
-        return generateHtml(prompt, List.of(defaultModel, "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"));
+        var models = new LinkedHashSet<String>();
+        models.add(defaultModel);
+        if (fallbackModels != null) models.addAll(Arrays.asList(fallbackModels.split(",")));
+        return generateHtml(prompt, models.stream().filter(m -> m != null && !m.isBlank()).toList());
     }
 
+    // Preserve the null-on-failure contract used by chatbot and email templates.
     public String generateHtml(String prompt, List<String> models) {
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn(">> [GeminiClient] GEMINI_API_KEY is null or empty!");
-            return null;
-        }
-
-        String body = """
-            {"contents":[{"role":"user","parts":[{"text":%s}]}]}
-        """.formatted(jsonQuote(prompt));
-
-        for (String mdl : models) {
-            if (mdl == null || mdl.isBlank()) continue;
-            String ep = endpointFor(mdl);
-
-            int attempts = 3;
-            long backoffMs = 400;
-
-            for (int attempt = 1; attempt <= attempts; attempt++) {
-                try {
-                    HttpRequest req = HttpRequest.newBuilder()
-                            .uri(URI.create(ep))
-                            .timeout(Duration.ofMillis(timeoutMs))
-                            .header("Content-Type", "application/json")
-                            .POST(HttpRequest.BodyPublishers.ofString(body))
-                            .build();
-
-                    HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-                    int code = resp.statusCode();
-
-                    if (code == 200) {
-                        String html = extractFirstText(resp.body());
-                        if (html != null && !html.isBlank()) {
-                            log.info(">> [GeminiClient] Response generated successfully with model: {}", mdl);
-                            return html.trim();
-                        }
-                        log.warn(">> [GeminiClient] Empty candidate returned by model: {}", mdl);
-                        break; // rỗng -> thử model khác
-                    }
-                    if (code == 404) {
-                        log.warn(">> [GeminiClient] Model {} not found (HTTP 404), trying next model...", mdl);
-                        break; // model không tồn tại -> model khác
-                    }
-                    if (code == 401 || code == 403) {
-                        log.error(">> [GeminiClient] Google Gemini API Key Error (HTTP {}): {}", code, resp.body());
-                        return null; // key lỗi/suspended -> dừng
-                    }
-
-                    if (code == 429 || (code >= 500 && code < 600)) {
-                        log.warn(">> [GeminiClient] Rate limit/Server error (HTTP {}), retrying in {}ms...", code, backoffMs);
-                        Thread.sleep(backoffMs);
-                        backoffMs *= 2;
-                        continue;
-                    }
-                    log.error(">> [GeminiClient] Unexpected response (HTTP {}): {}", code, resp.body());
-                    break; // lỗi khác -> bỏ model này
-
-                } catch (HttpTimeoutException e) {
-                    log.error(">> [GeminiClient] Timeout occurred while calling model {}", mdl);
-                    return null;
-
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return null;
-
-                } catch (Exception ex) {
-                    log.warn(">> [GeminiClient] Exception on attempt {} for model {}: {}", attempt, mdl, ex.getMessage());
-                    try { Thread.sleep(backoffMs); } catch (InterruptedException ignored) {
-                        Thread.currentThread().interrupt();
-                        return null;
-                    }
-                    backoffMs *= 2;
+        if (!isConfigured()) return null;
+        Map<String, Object> body = Map.of("contents", List.of(Map.of(
+                "role", "user", "parts", List.of(Map.of("text", prompt == null ? "" : prompt)))));
+        for (String model : new LinkedHashSet<>(models)) {
+            if (model == null || model.isBlank()) continue;
+            ApiResult result = call(model.trim(), "generateContent", body,
+                    Duration.ofMillis(Math.max(1, timeoutMs)), Math.clamp(maxAttempts, 1, 3));
+            if (result.status() == 200) {
+                StringBuilder text = new StringBuilder();
+                for (JsonNode part : result.body().path("candidates").path(0).path("content").path("parts")) {
+                    text.append(part.path("text").asText(""));
                 }
+                if (!text.isEmpty()) return text.toString().trim();
+                log.warn("Gemini returned no text for model {}", model);
+            } else if (result.status() != 404) {
+                // Changing models cannot fix invalid credentials, exhausted quota or transport errors.
+                return null;
             }
         }
-        log.error(">> [GeminiClient] All Gemini models failed to generate response.");
-        return null; // hết cách -> fallback ở lớp gọi
+        return null;
     }
 
-    private static String jsonQuote(String s) {
-        if (s == null) return "\"\"";
-        return "\"" + s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "") + "\"";
+    public List<Float> embed(String text, int dimensions, Duration timeout) {
+        if (!isConfigured()) return List.of();
+        ApiResult result = call(embeddingModel, "embedContent", Map.of(
+                "model", "models/" + embeddingModel,
+                "content", Map.of("parts", List.of(Map.of("text", text))),
+                "outputDimensionality", dimensions), timeout, 1);
+        if (result.status() != 200) return List.of();
+        JsonNode values = result.body().path("embedding").path("values");
+        if (!values.isArray() || values.size() != dimensions) {
+            log.warn("Gemini embedding dimensions do not match configured size {}", dimensions);
+            return List.of();
+        }
+        var vector = new java.util.ArrayList<Float>(dimensions);
+        for (JsonNode value : values) {
+            if (!value.isNumber() || !Float.isFinite(value.floatValue())) return List.of();
+            vector.add(value.floatValue());
+        }
+        return vector;
     }
 
-    private String extractFirstText(String json) {
+    private boolean isConfigured() {
+        if (apiKey != null && !apiKey.isBlank()) return true;
+        log.warn("Gemini is unavailable: GEMINI_API_KEY is missing");
+        return false;
+    }
+
+    private ApiResult call(String model, String operation, Map<String, Object> body,
+                           Duration timeout, int attempts) {
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(apiBase.replaceAll("/+$", "") + "/models/" + model + ":" + operation))
+                        .timeout(timeout)
+                        .header("Content-Type", "application/json")
+                        .header("x-goog-api-key", apiKey.trim())
+                        .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
+                        .build();
+                HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+                int status = response.statusCode();
+                if (status == 200) return new ApiResult(status, mapper.readTree(response.body()));
+                // Google's error message may echo the API key. Log only machine-readable codes.
+                log.warn("Gemini {} failed: HTTP {}, category={}, reason={}", operation, status,
+                        category(status), errorReason(response.body()));
+                if (!isTransient(status) || attempt == attempts) return new ApiResult(status, null);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return new ApiResult(0, null);
+            } catch (IOException e) {
+                log.warn("Gemini {} transport failure: {} (attempt {}/{})",
+                        operation, e.getClass().getSimpleName(), attempt, attempts);
+                if (attempt == attempts) return new ApiResult(0, null);
+            } catch (RuntimeException e) {
+                log.error("Gemini {} configuration failure: {}", operation, e.getClass().getSimpleName());
+                return new ApiResult(0, null);
+            }
+            try {
+                Thread.sleep(Math.max(0, retryDelayMs) * (1L << (attempt - 1)));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return new ApiResult(0, null);
+            }
+        }
+        return new ApiResult(0, null);
+    }
+
+    private boolean isTransient(int status) {
+        return status == 408 || status == 429 || (status >= 500 && status < 600);
+    }
+
+    private String category(int status) {
+        return switch (status) {
+            case 401, 403 -> "AUTHORIZATION";
+            case 404 -> "MODEL_NOT_FOUND";
+            case 429 -> "QUOTA_OR_RATE_LIMIT";
+            case 408 -> "TIMEOUT";
+            default -> status >= 500 ? "UPSTREAM_SERVER" : "INVALID_REQUEST";
+        };
+    }
+
+    private String errorReason(String body) {
         try {
-            JsonNode root = mapper.readTree(json);
-            JsonNode candidates = root.path("candidates");
-            if (!candidates.isArray() || candidates.isEmpty()) return null;
-            JsonNode parts = candidates.get(0).path("content").path("parts");
-            if (!parts.isArray() || parts.isEmpty()) return null;
-            StringBuilder sb = new StringBuilder();
-            for (JsonNode p : parts) {
-                String t = p.path("text").asText(null);
-                if (t != null) sb.append(t);
+            JsonNode error = mapper.readTree(body).path("error");
+            for (JsonNode detail : error.path("details")) {
+                String reason = detail.path("reason").asText("");
+                if (reason.matches("[A-Z][A-Z0-9_]{0,63}")) return reason;
             }
-            return sb.length() == 0 ? null : sb.toString();
-        } catch (Exception e) {
-            return null;
+            String status = error.path("status").asText("");
+            if (status.matches("[A-Z][A-Z0-9_]{0,63}")) return status;
+        } catch (Exception ignored) {
+            // The upstream body is intentionally never included in logs.
         }
+        return "UNKNOWN";
     }
+
+    private record ApiResult(int status, JsonNode body) {}
 }

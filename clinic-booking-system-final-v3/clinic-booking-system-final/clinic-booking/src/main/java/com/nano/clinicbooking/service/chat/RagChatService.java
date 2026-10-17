@@ -1,112 +1,24 @@
 package com.nano.clinicbooking.service.chat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nano.clinicbooking.service.gemini.GeminiClient;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
-import io.qdrant.client.QdrantClient;
-import io.qdrant.client.QdrantGrpcClient;
-import io.qdrant.client.grpc.Collections.Distance;
-import io.qdrant.client.grpc.Collections.VectorParams;
-import io.qdrant.client.grpc.Points.ScoredPoint;
-import io.qdrant.client.grpc.Points.SearchPoints;
-import io.qdrant.client.grpc.Points.WithPayloadSelector;
-import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.time.ZoneId;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class RagChatService {
 
     private final GeminiClient gemini;
-    private final QdrantClient qdrant;
-    private final String collection;
+    private final UnifiedClinicDataProvider dataProvider;
+    private final ClinicKnowledgeService knowledgeService;
 
-    // Gemini Embedding (HTTP)
-    private final String geminiApiKey;
-    private final String geminiApiBase;
-    private final String embeddingModel;
-
-
-    private final UnifiedClinicDataProvider dataProvider;          // NEW
-    private final HttpClient http = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
-            .connectTimeout(Duration.ofSeconds(15))
-            .build();
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    public RagChatService(
-            GeminiClient geminiClient,
-            @Value("${qdrant.host}") String qdrantHost,
-            @Value("${qdrant.port:6334}") int qdrantPort,
-            @Value("${qdrant.api-key}") String qdrantApiKey,
-            @Value("${qdrant.collection:nano_knowledge_base}") String collectionName,
-            @Value("${gemini.api.key}") String geminiApiKey,
-            @Value("${gemini.api.base:https://generativelanguage.googleapis.com/v1beta}") String geminiApiBase,
-            @Value("${gemini.embedding.model:text-embedding-004}") String embeddingModel,
-            // NEW
-            UnifiedClinicDataProvider dataProvider                  // NEW
-    ) {
-        this.gemini = geminiClient;
-        this.collection = collectionName;
-
-        this.dataProvider = dataProvider;                          // NEW
-
-        QdrantGrpcClient grpc = QdrantGrpcClient.newBuilder(qdrantHost, qdrantPort, true)
-                .withApiKey(qdrantApiKey)
-                .build();
-        this.qdrant = new QdrantClient(grpc);
-
-        this.geminiApiKey = geminiApiKey;
-        this.geminiApiBase = geminiApiBase;
-        this.embeddingModel = embeddingModel;
-    }
-
-    @PostConstruct
-    public void init() {
-        try {
-            ensureCollection(768); // đổi 768 nếu model embedding khác kích thước
-        } catch (Exception ex) {
-            log.warn("Không thể kết nối đến Qdrant Server. Tính năng Chatbot RAG sẽ tạm thời không khả dụng: {}", ex.getMessage());
-        }
-    }
-
-    private void ensureCollection(int embeddingDim) throws Exception {
-        try {
-            qdrant.getCollectionInfoAsync(collection).get();
-            log.info("Qdrant collection '{}' đã tồn tại.", collection);
-        } catch (ExecutionException ex) {
-            var cause = ex.getCause();
-            if (cause instanceof StatusRuntimeException sre
-                    && sre.getStatus().getCode() == Status.Code.NOT_FOUND) {
-                log.warn("Chưa có collection '{}', tạo mới…", collection);
-                qdrant.createCollectionAsync(
-                        collection,
-                        VectorParams.newBuilder()
-                                .setSize(embeddingDim)
-                                .setDistance(Distance.Cosine)
-                                .build()
-                ).get();
-                log.info("Đã tạo collection '{}'.", collection);
-            } else {
-                throw ex;
-            }
-        }
-    }
+    private static final String UNAVAILABLE_MESSAGE =
+            "Xin lỗi bạn, trợ lý AI hiện chưa thể trả lời. Vui lòng thử lại sau hoặc liên hệ phòng khám để được hỗ trợ đặt lịch.";
 
     /* =================== PUBLIC ENTRYPOINTS =================== */
 
@@ -134,8 +46,8 @@ public class RagChatService {
             return answerWithUnifiedData(question);
 
         } catch (Exception e) {
-            log.error("ask() error", e);
-            return "Đã xảy ra lỗi: " + e.getMessage();
+            log.error("Chatbot request failed ({})", e.getClass().getSimpleName());
+            return UNAVAILABLE_MESSAGE;
         }
     }
 
@@ -146,28 +58,10 @@ public class RagChatService {
         // 1) Lấy data JSON từ DB
         String eventsJson = dataProvider.getEventsJson();
         String doctorsJson = dataProvider.getDoctorsJson();
-        String shiftsJson = dataProvider.getShiftsJsonForWeek(LocalDate.now());
+        String shiftsJson = dataProvider.getShiftsJsonForWeek(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")));
 
         // 2) RAG context (nếu có)
-        String ragContext = "";
-        List<Float> queryVec = embed(question);
-        if (queryVec != null && !queryVec.isEmpty()) {
-            SearchPoints search = SearchPoints.newBuilder()
-                    .setCollectionName(collection)
-                    .addAllVector(queryVec)
-                    .setLimit(5)
-                    .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
-                    .build();
-            List<ScoredPoint> hits = qdrant.searchAsync(search).get();
-
-            ragContext = hits.stream()
-                    .map(p -> {
-                        var v = p.getPayloadMap().get("text");
-                        return v != null ? v.getStringValue() : "";
-                    })
-                    .filter(s -> !s.isBlank())
-                    .collect(Collectors.joining("\n---\n"));
-        }
+        String ragContext = knowledgeService.findContext(question);
 
         // 3) Build prompt hợp nhất
         String prompt = buildUnifiedPrompt(ragContext, eventsJson, doctorsJson, shiftsJson, question);
@@ -178,8 +72,8 @@ public class RagChatService {
             return answer.trim();
         }
 
-        log.warn(">> Gemini AI trả về null hoặc rỗng cho câu hỏi: '{}'", question);
-        return "Xin lỗi bạn, hiện tại kết nối đến trợ lý AI đang bị gián đoạn. Nếu bạn cần hỗ trợ gấp hoặc đặt lịch khám, vui lòng liên hệ hotline: **032594011** hoặc đến trực tiếp tại **123 Nguyễn Văn Linh, Đà Nẵng** để được hỗ trợ nhanh nhất nhé!";
+        log.warn("Gemini returned no chatbot answer; see Gemini failure code in server logs");
+        return UNAVAILABLE_MESSAGE;
     }
 
     /* PROMPT BUILDER  */
@@ -271,7 +165,7 @@ public class RagChatService {
             String ans = gemini.generateHtml(prompt);
             return (ans == null || ans.isBlank()) ? null : ans;
         } catch (Exception e) {
-            log.error("[INTRO-AI] error", e);
+            log.warn("Clinic introduction generation unavailable ({})", e.getClass().getSimpleName());
             return null;
         }
     }
@@ -287,53 +181,4 @@ public class RagChatService {
                 """;
     }
 
-    /* EMBEDDING HTTP */
-
-    private List<Float> embed(String text) {
-        try {
-            if (geminiApiKey == null || geminiApiKey.isBlank()) return null;
-
-            String base = geminiApiBase == null ? "" : geminiApiBase.replaceAll("/+$", "");
-            String url = String.format("%s/models/%s:embedContent?key=%s", base, embeddingModel, geminiApiKey);
-
-            String body = """
-                    {
-                      "model": "models/%s",
-                      "content": { "parts": [ { "text": %s } ] }
-                    }
-                    """.formatted(embeddingModel, jsonQuote(text));
-
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-
-            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) {
-                log.warn("Embedding HTTP {}: {}", resp.statusCode(), resp.body());
-                return null;
-            }
-
-            JsonNode root = mapper.readTree(resp.body());
-            JsonNode values = root.path("embedding").path("values");
-            if (!values.isArray() || values.isEmpty()) return null;
-
-            List<Float> out = new ArrayList<>(values.size());
-            for (JsonNode n : values) out.add((float) n.asDouble());
-            return out;
-        } catch (Exception e) {
-            log.error("embed() error", e);
-            return null;
-        }
-    }
-
-    private static String jsonQuote(String s) {
-        if (s == null) return "\"\"";
-        return "\"" + s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "") + "\"";
-    }
 }

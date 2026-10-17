@@ -75,6 +75,7 @@ export default function Login() {
             name="email"
             label="Email"
             type="email"
+            autoComplete="username"
             value={email}
             placeholder="you@example.com"
             onChange={(e) => setEmail(e.target.value)}
@@ -86,6 +87,7 @@ export default function Login() {
             name="password"
             label="Mật khẩu"
             type="password"
+            autoComplete="current-password"
             value={password}
             placeholder="••••••••"
             onChange={(e) => setPassword(e.target.value)}
