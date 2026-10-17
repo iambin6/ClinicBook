@@ -2,6 +2,7 @@ package com.nano.clinicbooking.controller.chatbot;
 
 import com.nano.clinicbooking.service.chat.RagChatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/chat")
 @RequiredArgsConstructor
+@CrossOrigin
 public class RagChatController {
 
     private final RagChatService ragChatService;
