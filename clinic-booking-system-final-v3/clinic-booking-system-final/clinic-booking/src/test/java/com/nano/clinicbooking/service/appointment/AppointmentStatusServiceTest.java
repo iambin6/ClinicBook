@@ -23,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +61,9 @@ class AppointmentStatusServiceTest {
         appointment.setId(1L);
         appointment.setStatus(AppointmentStatus.PENDING_CONFIRMATION);
         appointment.setSlot(slot);
+        // Valid cancellation fixtures must satisfy the existing 48-hour rule.
+        appointment.setAppointmentDate(LocalDate.now().plusDays(3));
+        appointment.setAppointmentTime(LocalTime.NOON);
 
         // Mapper -> DTO (lenient do có test ném exception không chạy tới đây)
         lenient().when(appointmentMapper.toDto(any(Appointment.class))).thenAnswer(inv -> {

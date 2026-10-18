@@ -4,6 +4,7 @@ import com.nano.clinicbooking.dto.request.BookAppointmentRequest;
 import com.nano.clinicbooking.enums.AppointmentStatus;
 import com.nano.clinicbooking.enums.AppointmentType;
 import com.nano.clinicbooking.enums.SlotStatus;
+import com.nano.clinicbooking.exception.BookingConflictException;
 import com.nano.clinicbooking.exception.ResourceNotFoundException;
 import com.nano.clinicbooking.mapper.AppointmentMapper;
 import com.nano.clinicbooking.model.*;
@@ -85,37 +86,21 @@ public class AppointmentCreationService {
 
             int maxPerSlot = shift.getMaxPatients();
 
-            // ✅ Lấy toàn bộ slot của ca
-            List<ShiftSlot> slots = slotRepo.findByShiftIdOrderBySlotNumberAsc(shift.getId());
-            if (slots.isEmpty()) {
-                throw new IllegalStateException("Ca khám này chưa có slot nào!");
+            // The selected profiles are the patients; the account owner is not
+            // an additional patient unless explicitly selected.
+            int newPatients = request.getPatients() == null || request.getPatients().isEmpty()
+                    ? 1 : request.getPatients().size();
+            if (newPatients > maxPerSlot) {
+                throw new IllegalStateException("Số người khám vượt quá giới hạn của ca khám.");
             }
 
-            // ✅ Tính số bệnh nhân của cuộc hẹn mới
-            int newPatients = (request.getPatients() == null ? 1 : request.getPatients().size() + 1);
-
-            // ✅ Tìm slot đầu tiên còn chỗ trống
-            ShiftSlot targetSlot = null;
-            for (ShiftSlot s : slots) {
-                // Đếm tổng số bệnh nhân trong slot này
-                long currentPatients = appointmentRepo.findAll().stream()
-                        .filter(a -> a.getSlot() != null && Objects.equals(a.getSlot().getId(), s.getId()))
-                        .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
-                        .mapToLong(a -> a.getPatientInfos().size() + 1)
-                        .sum();
-
-                if (currentPatients + newPatients <= maxPerSlot) {
-                    targetSlot = s;
-                    break;
-                }
+            // Each slot belongs to one appointment (possibly with several
+            // patient profiles). Never assign a second appointment to it.
+            List<ShiftSlot> availableSlots = slotRepo.findAvailableSlotsForUpdate(shift.getId());
+            if (availableSlots.isEmpty()) {
+                throw new BookingConflictException("Ca khám đã hết khung giờ trống. Vui lòng chọn ca khác.");
             }
-
-            if (targetSlot == null) {
-                throw new IllegalStateException(
-                        "❌ Tất cả slot trong ca đã đủ " + maxPerSlot + " bệnh nhân mỗi slot. " +
-                                "Vui lòng chọn ca khác hoặc giảm số lượng bệnh nhân."
-                );
-            }
+            ShiftSlot targetSlot = availableSlots.getFirst();
 
             // ✅ Gán slot này cho appointment
             targetSlot.setStatus(SlotStatus.BOOKED);
