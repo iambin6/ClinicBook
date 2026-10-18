@@ -3,3 +3,5 @@ target/
 .gitignore
 .idea
 *.iml
+src/main/resources/application-secret.properties
+.qdrant-local.properties

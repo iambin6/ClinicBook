@@ -5,13 +5,17 @@ COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests
+RUN java -Djarmode=tools -jar target/*.jar extract --destination /app/extracted --application-filename app.jar
 
 # Stage 2: Lightweight runtime image with JRE 22
 FROM eclipse-temurin:22-jre-jammy
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/extracted/ ./
 
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=10000
+ENV SPRING_PROFILES_ACTIVE=render
+EXPOSE 10000
 
-ENTRYPOINT ["java", "-Xmx350m", "-Xms200m", "-XX:+UseSerialGC", "-Xss512k", "-jar", "app.jar"]
+# Leave room for metaspace, threads and native buffers in a 512 MiB container.
+# C1 compilation reduces startup CPU work on small Render instances.
+ENTRYPOINT ["java", "-XX:InitialRAMPercentage=10.0", "-XX:MaxRAMPercentage=50.0", "-XX:ReservedCodeCacheSize=48m", "-XX:MaxDirectMemorySize=32m", "-XX:TieredStopAtLevel=1", "-XX:+UseSerialGC", "-XX:+ExitOnOutOfMemoryError", "-Xss512k", "-jar", "app.jar"]

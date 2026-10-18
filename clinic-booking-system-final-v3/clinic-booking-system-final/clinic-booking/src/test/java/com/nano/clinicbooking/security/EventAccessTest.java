@@ -2,6 +2,7 @@ package com.nano.clinicbooking.security;
 
 import com.nano.clinicbooking.controller.event.EventController;
 import com.nano.clinicbooking.controller.event.UserEventController;
+import com.nano.clinicbooking.controller.health.HealthController;
 import com.nano.clinicbooking.repository.search_user.UserRepository;
 import com.nano.clinicbooking.service.ev_vc.EventService;
 import com.nano.clinicbooking.service.login.CustomOidcUserService;
@@ -9,6 +10,8 @@ import com.nano.clinicbooking.service.login.FacebookOAuth2UserService;
 import com.nano.clinicbooking.service.user.UserEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.availability.ApplicationAvailability;
+import org.springframework.boot.availability.ReadinessState;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -29,7 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest({UserEventController.class, EventController.class})
+@WebMvcTest({UserEventController.class, EventController.class, HealthController.class})
 @Import({SecurityConfig.class, JwtFilter.class, EventAccessTest.OAuthConfiguration.class})
 class EventAccessTest {
     @Autowired private MockMvc mvc;
@@ -39,6 +42,22 @@ class EventAccessTest {
     @MockitoBean private FacebookOAuth2UserService facebookUsers;
     @MockitoBean private UserRepository users;
     @MockitoBean private JwtService jwt;
+    @MockitoBean private ApplicationAvailability availability;
+
+    @Test
+    void publicHealthRequiresTheApplicationToBeReady() throws Exception {
+        when(availability.getReadinessState()).thenReturn(ReadinessState.REFUSING_TRAFFIC);
+        mvc.perform(get("/health")).andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value("STARTING"));
+        when(availability.getReadinessState()).thenReturn(ReadinessState.ACCEPTING_TRAFFIC);
+        mvc.perform(get("/health")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    void healthPermissionOnlyAllowsGetRequests() throws Exception {
+        mvc.perform(post("/health")).andExpect(status().isUnauthorized());
+    }
 
     @Test
     void guestCanReadPublicEvents() throws Exception {

@@ -9,6 +9,7 @@ import io.qdrant.client.grpc.Points.*;
 import io.qdrant.client.grpc.JsonWithInt.Value;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.util.List;
@@ -33,6 +34,17 @@ class ClinicKnowledgeServiceTest {
                 .setParams(CollectionParams.newBuilder().setVectorsConfig(VectorsConfig.newBuilder()
                         .setParams(VectorParams.newBuilder().setSize(dimensions).setDistance(Distance.Cosine)))))
                 .build();
+    }
+
+    @Test
+    void qdrantTransportDoesNotDependOnUnusedAiSdks() {
+        var realTransport = new ClinicKnowledgeService(gemini, true, "unavailable.invalid", 6334,
+                true, "smoke-test-only", "new", 3, 100);
+        try {
+            assertThat(ReflectionTestUtils.getField(realTransport, "qdrant")).isNotNull();
+        } finally {
+            realTransport.close();
+        }
     }
 
     @Test
