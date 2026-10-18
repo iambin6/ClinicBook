@@ -48,7 +48,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 40px 56px;
+  padding: 32px 40px;
   gap: 24px;
   background: #ffffff;
   color: #0f172a;
@@ -384,4 +384,20 @@
     padding: 28px;
   }
 }
+
+/* Sidebar Icon */
+.patient-sidebar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.18s ease;
+}
+.patient-sidebar__link:hover .patient-sidebar__icon,
+.patient-sidebar__link.is-active .patient-sidebar__icon {
+  opacity: 1;
+}
+
 

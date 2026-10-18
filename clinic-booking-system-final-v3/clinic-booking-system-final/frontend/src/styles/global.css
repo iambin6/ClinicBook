@@ -153,7 +153,7 @@ a:hover{ text-decoration: underline; }
 .input:focus{ border-color: var(--brand); box-shadow: 0 0 0 3px rgba(28,126,214,.25); }
 .label{ display:block; margin: 8px 0 6px; color:#000000; font-size: 14px; }
 .error{ color: var(--danger); font-size: 12px; margin-top: 6px; }
-.card{
+.dark-card{
   background: rgba(18,25,51,.75);
   border:1px solid #1f2a44;
   border-radius: 16px;
@@ -170,3 +170,14 @@ a:hover{ text-decoration: underline; }
 }
 @media (max-width: 900px){ .grid{ grid-template-columns: repeat(6, 1fr) } }
 @media (max-width: 640px){ .grid{ grid-template-columns: repeat(4, 1fr) } }
+
+/* ===== Accessibility: focus-visible ===== */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(28, 126, 214, 0.45);
+  outline-offset: 2px;
+}
+

@@ -28,16 +28,6 @@
   flex-wrap: wrap;      /* xuống hàng đẹp trên mobile */
 }
 
-/* Tông màu & thông số dùng chung (có thể map với tokens.css của bạn) */
-:root{
-  --qa-primary: #2f6fff;        /* gần với header primary */
-  --qa-primary-ink: #ffffff;
-  --qa-outline-bg: #ADDFF6;
-  --qa-outline-ink: #ffffff;
-  --qa-border: rgba(255,255,255,.65);
-  --qa-shadow: 0 10px 30px rgba(0,0,0,.18);
-}
-
 /* Base style: giống nút header (viên thuốc, viền, shadow, blur nhẹ) */
 .qa-btn{
   display: inline-block;

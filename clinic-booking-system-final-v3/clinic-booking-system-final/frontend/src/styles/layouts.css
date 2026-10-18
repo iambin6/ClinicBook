@@ -43,6 +43,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
 }
 
 .admin-sidebar .brand {
@@ -231,4 +232,31 @@
   .admin-topbar .icon-btn { width: 36px; height: 36px; border-radius: 10px; }
 }
 
+@media (max-width: 768px) {
+  .admin-wrap {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: 12px 16px;
+  }
+  .admin-sidebar .menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .admin-sidebar .menu .nav-link.item {
+    padding: 6px 10px !important;
+    font-size: 13px;
+  }
+  .admin-body {
+    padding: 16px;
+  }
+}
+
 /* End of admin.css */
+
