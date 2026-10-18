@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UserType } from '../types/auth';
@@ -28,25 +28,34 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
+function loadStoredUser(): User | null {
+  try {
+    const token = localStorage.getItem('access_token');
+    const storedUser = localStorage.getItem('user');
+    if (!token?.trim() || !storedUser) return null;
+
+    const parsed: unknown = JSON.parse(storedUser);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as User;
+  } catch {
+    // Invalid or inaccessible browser storage must not prevent the login page from rendering.
+    return null;
+  }
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Route guards need the saved session on their first render, before any effects run.
+  const [user, setUser] = useState<User | null>(loadStoredUser);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      setUser(parsed);
-    }
-  }, []);
-
-  const login = (userData: User, token: string) => {
+  const login = useCallback((userData: User, token: string) => {
     const formattedUser = { ...userData };
     localStorage.setItem('access_token', token);
     localStorage.setItem('user', JSON.stringify(formattedUser));
     setUser(formattedUser);
-  };
+  }, []);
 
   const logout = async () => {
     try {
