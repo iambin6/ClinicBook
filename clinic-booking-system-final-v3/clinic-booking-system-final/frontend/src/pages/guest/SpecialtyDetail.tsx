@@ -308,7 +308,7 @@ export default function SpecialtyDetail() {
                 fullName: d.fullName,
                 degree: d.degree,
                 specialtyName: d.specialtyName || specialty.name,
-                avatarUrl: getDoctorImagePathWithFallback(d.fullName) || undefined,
+                avatarUrl: d.avatarUrl || d.imageUrl || d.photoUrl || getDoctorImagePathWithFallback(d.fullName) || undefined,
                 email: d.email,
                 phoneNumber: d.phoneNumber,
                 description: d.description,

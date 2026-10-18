@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Carousel, Col, Container, Row, Spinner } from 'react-bootstrap';
+import { Button, Card, Carousel, Col, Container, Row, Spinner, Modal, Badge } from 'react-bootstrap';
 import { fetchDoctorsAll, fetchDoctorById as fetchDoctorByIdApi, type Doctor as ApiDoctor } from '../../api/doctor';
 import { getDoctorImagePathWithFallback } from '../../utils/doctorImage';
 import '../../styles/doctors-section.css';
 
-type DoctorCard = {
+export type DoctorCard = {
   id: number | string;
   fullName: string;
   degree?: string;
@@ -30,8 +30,8 @@ function mapApiDoctorToCard(doctor: ApiDoctor): DoctorCard {
   const raw = doctor as unknown as Record<string, unknown>;
   const specialization = typeof raw.specialization === 'string' ? raw.specialization : undefined;
   
-  // Use image from public/images folder instead of API
-  const avatarUrl = getDoctorImagePathWithFallback(doctor.fullName);
+  // Use uploaded avatar / image or fallback to local mapped images
+  const avatarUrl = doctor.avatarUrl || doctor.imageUrl || doctor.photoUrl || getDoctorImagePathWithFallback(doctor.fullName);
 
   return {
     id: doctor.id,
@@ -52,6 +52,7 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
   const [fetchedDoctors, setFetchedDoctors] = useState<DoctorCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [bookingDoctorId, setBookingDoctorId] = useState<number | string | null>(null);
+  const [selectedDoctorModal, setSelectedDoctorModal] = useState<DoctorCard | null>(null);
 
   // Use provided doctors or fetch from API
   const items = useMemo<DoctorCard[]>(() => {
@@ -142,13 +143,16 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
       }
     }
 
-    // Lấy specialtyId từ doctor detail (sau khi fetch) hoặc từ doctor card ban đầu
     const specialtyId = (detail as ApiDoctor).specialtyId ?? undefined;
 
     const params = new URLSearchParams();
     params.set('doctorId', String(targetId));
     if (specialtyId) {
       params.set('specialtyId', String(specialtyId));
+    }
+
+    if (selectedDoctorModal) {
+      setSelectedDoctorModal(null);
     }
 
     navigate(`/appointment?${params.toString()}`, {
@@ -165,36 +169,38 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
   return (
     <section className="doctors-section">
       <Container>
-        <div className="doctors-section__top">
-          <h2 className="doctors-section__title">{title}</h2>
-          {showControls && (
-            <div className="doctors-section__controls">
-              <Button
-                variant="outline-secondary"
-                onClick={handlePrev}
-                disabled={!canPrev}
-                className="doctors-section__nav-btn"
-                aria-label="Previous"
-              >
-                ‹
-              </Button>
-              <Button
-                variant="outline-secondary"
-                onClick={handleNext}
-                disabled={!canNext}
-                className="doctors-section__nav-btn"
-                aria-label="Next"
-              >
-                ›
-              </Button>
-            </div>
-          )}
-        </div>
+        {title && (
+          <div className="doctors-section__top">
+            <h2 className="doctors-section__title">{title}</h2>
+            {showControls && (
+              <div className="doctors-section__controls">
+                <Button
+                  variant="outline-secondary"
+                  onClick={handlePrev}
+                  disabled={!canPrev}
+                  className="doctors-section__nav-btn"
+                  aria-label="Previous"
+                >
+                  ‹
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  onClick={handleNext}
+                  disabled={!canNext}
+                  className="doctors-section__nav-btn"
+                  aria-label="Next"
+                >
+                  ›
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="doctors-section__loading">
             <Spinner animation="border" role="status" />
-            <span>Đang tải bác sĩ...</span>
+            <span>Đang tải danh sách bác sĩ...</span>
           </div>
         ) : (
           <Carousel
@@ -213,6 +219,7 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
                   {group.map((d) => (
                     <Col key={d.id} xs={12} md={6} lg={4} className="d-flex">
                       <Card className="doctors-section__card h-100 shadow-sm border-0">
+                        {/* Doctor Avatar */}
                         <div className="doctors-section__image-wrapper">
                           {d.avatarUrl ? (
                             <img
@@ -229,51 +236,87 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
                               }}
                             />
                           ) : null}
+
                           <div 
                             className="doctors-section__image-placeholder"
-                            style={{ 
-                              display: d.avatarUrl ? 'none' : 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              backgroundColor: '#e9ecef',
-                              color: '#6c757d',
-                              fontSize: '24px',
-                              fontWeight: 'bold',
-                              width: '100%',
-                              height: '100%'
-                            }}
+                            style={{ display: d.avatarUrl ? 'none' : 'flex' }}
                           >
-                            {d.fullName?.charAt(0) || 'BS'}
+                            <svg
+                              className="doctors-section__avatar-svg"
+                              width="52"
+                              height="52"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <span className="doctors-section__avatar-badge">
+                              {d.fullName ? d.fullName.trim().split(' ').slice(-1)[0][0] : 'BS'}
+                            </span>
                           </div>
                         </div>
+
+                        {/* Doctor Card Body */}
                         <Card.Body className="doctors-section__card-body">
+                          {/* 1. Doctor Name (Prominent on top) */}
                           <Card.Title as="h3" className="doctors-section__name">
                             {d.fullName}
                           </Card.Title>
-                          <Card.Subtitle className="doctors-section__degree">
-                            {d.degree || 'Bác sĩ'}
-                          </Card.Subtitle>
-                          <Card.Text className="doctors-section__specialty">
-                            {d.specialtyName || d.specialty || 'Chuyên khoa'}
-                          </Card.Text>
+
+                          {/* 2. Degree / Title (Directly under name) */}
+                          <div className="doctors-section__degree">
+                            {d.degree || 'Bác sĩ chuyên khoa'}
+                          </div>
+
+                          {/* 3. Specialty Badge Chip */}
+                          <div className="doctors-section__specialty-wrap">
+                            <span className="doctors-section__specialty-badge">
+                              {d.specialtyName || d.specialty || 'Chuyên khoa'}
+                            </span>
+                          </div>
+
+                          {/* 4. Experience if available */}
+                          {d.experience && (
+                            <div className="doctors-section__experience">
+                              <small>Kinh nghiệm: {d.experience}</small>
+                            </div>
+                          )}
+
+                          {/* 5. Action Buttons (Pushed to bottom) */}
                           <div className="doctors-section__actions">
-                            <Button
-                              onClick={() => navigate('/doctors')}
-                              variant="outline-primary"
-                              size="sm"
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDoctorModal(d)}
                               className="doctors-section__view-btn"
+                              title="Xem chi tiết hồ sơ bác sĩ"
                             >
-                              Xem thông tin
-                            </Button>
-                            <Button
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                <line x1="12" y1="8" x2="12.01" y2="8"/>
+                              </svg>
+                              <span>Xem thông tin</span>
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => handleBook(d)}
-                              variant="primary"
-                              size="sm"
                               className="doctors-section__book-btn"
                               disabled={bookingDoctorId === d.id}
                             >
-                              {bookingDoctorId === d.id ? 'Đang tải...' : 'Đặt lịch'}
-                            </Button>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              <span>{bookingDoctorId === d.id ? 'Đang xử lý…' : 'Đặt lịch'}</span>
+                            </button>
                           </div>
                         </Card.Body>
                       </Card>
@@ -285,7 +328,91 @@ export default function DoctorsSection({ title = 'Đội ngũ CHUYÊN GIA - BÁC
           </Carousel>
         )}
       </Container>
+
+      {/* Doctor Profile Modal */}
+      <Modal
+        show={!!selectedDoctorModal}
+        onHide={() => setSelectedDoctorModal(null)}
+        centered
+        size="lg"
+        className="doctor-detail-modal"
+      >
+        <Modal.Header closeButton className="border-0 pb-0">
+          <Modal.Title className="fw-bold fs-5 text-primary">Thông tin Bác sĩ</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="pt-2 pb-4">
+          {selectedDoctorModal && (
+            <Row className="g-4 align-items-center">
+              <Col md={4} className="text-center">
+                <div className="doctor-modal__avatar-wrap mx-auto">
+                  {selectedDoctorModal.avatarUrl ? (
+                    <img
+                      src={selectedDoctorModal.avatarUrl}
+                      alt={selectedDoctorModal.fullName}
+                      className="doctor-modal__avatar"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/img/doctor-placeholder.jpg';
+                      }}
+                    />
+                  ) : (
+                    <div className="doctor-modal__placeholder">
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </Col>
+              <Col md={8}>
+                <h3 className="fw-bold mb-1 text-dark">{selectedDoctorModal.fullName}</h3>
+                {selectedDoctorModal.degree && (
+                  <div className="text-muted fw-semibold mb-2">{selectedDoctorModal.degree}</div>
+                )}
+                <div className="mb-3">
+                  <Badge bg="primary" className="px-3 py-2 rounded-pill font-monospace">
+                    {selectedDoctorModal.specialtyName || selectedDoctorModal.specialty || 'Chuyên khoa'}
+                  </Badge>
+                </div>
+
+                {selectedDoctorModal.experience && (
+                  <p className="mb-2 text-secondary">
+                    <strong>Kinh nghiệm:</strong> {selectedDoctorModal.experience}
+                  </p>
+                )}
+
+                {selectedDoctorModal.description && (
+                  <p className="mb-3 text-secondary" style={{ lineHeight: '1.6' }}>
+                    <strong>Giới thiệu:</strong> {selectedDoctorModal.description}
+                  </p>
+                )}
+
+                {(selectedDoctorModal.email || selectedDoctorModal.phoneNumber) && (
+                  <div className="p-3 bg-light rounded-3 mb-2 small text-muted">
+                    {selectedDoctorModal.email && <div>✉ {selectedDoctorModal.email}</div>}
+                    {selectedDoctorModal.phoneNumber && <div>☎ {selectedDoctorModal.phoneNumber}</div>}
+                  </div>
+                )}
+              </Col>
+            </Row>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-0 pt-0">
+          <Button variant="secondary" onClick={() => setSelectedDoctorModal(null)} className="rounded-pill px-4">
+            Đóng
+          </Button>
+          {selectedDoctorModal && (
+            <Button
+              variant="primary"
+              onClick={() => handleBook(selectedDoctorModal)}
+              className="rounded-pill px-4"
+              disabled={bookingDoctorId === selectedDoctorModal.id}
+            >
+              {bookingDoctorId === selectedDoctorModal.id ? 'Đang tải...' : 'Đặt lịch khám ngay'}
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
     </section>
   );
 }
-
