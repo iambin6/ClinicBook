@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Container } from "react-bootstrap";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Container, Spinner } from "react-bootstrap";
 import { useSearchParams } from "react-router-dom";
 import { useAppt } from "../../contexts/AppointmentContext";
 import { fetchDoctorById } from "../../api/doctor";
@@ -8,118 +8,126 @@ import Step2 from "./steps/Step2";
 import Step3 from "./steps/Step3";
 import Step4 from "./steps/Step4";
 
+function positiveId(value: string | null): number | null {
+  if (!value?.trim()) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 export default function Appointment() {
   const { state, dispatch } = useAppt();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
+  const doctorIdParam = sp.get("doctorId");
+  const specialtyIdParam = sp.get("specialtyId");
+  const stepParam = sp.get("step");
+  const [loadingDoctor, setLoadingDoctor] = useState(Boolean(positiveId(doctorIdParam)));
+  const [doctorError, setDoctorError] = useState<string | null>(null);
+  const previousStep = useRef<{ url: string | null; state: number } | null>(null);
 
-  // đọc step từ URL
-  useEffect(() => {
-    const s = Number(sp.get("step") || 1) as 1|2|3|4;
-    if (s !== state.step) dispatch({ type: "SET_STEP", step: s });
-  }, [sp]);
+  const currentSelection = useRef(state);
 
-  // đọc doctorId và specialtyId từ URL khi vào trang
   useEffect(() => {
-    const doctorIdParam = sp.get("doctorId");
-    const specialtyIdParam = sp.get("specialtyId");
-    
-    // Chỉ xử lý khi có tham số trong URL
-    if (!doctorIdParam && !specialtyIdParam) {
+    currentSelection.current = state;
+  }, [state]);
+
+  // URL navigation and step buttons must not overwrite each other during initialization.
+  useEffect(() => {
+    const previous = previousStep.current;
+    previousStep.current = { url: stepParam, state: state.step };
+    const value = Number(stepParam || 1);
+    const urlStep = value === 2 || value === 3 || value === 4 ? value : 1;
+
+    if (!previous || previous.url !== stepParam) {
+      if (state.step !== urlStep) dispatch({ type: "SET_STEP", step: urlStep });
+      if (stepParam !== null && stepParam !== String(urlStep)) {
+        const next = new URLSearchParams(sp);
+        next.set("step", String(urlStep));
+        setSp(next, { replace: true });
+      }
+    } else if (previous.state !== state.step && urlStep !== state.step) {
+      const next = new URLSearchParams(sp);
+      next.set("step", String(state.step));
+      setSp(next, { replace: true });
+    }
+  }, [stepParam, state.step, sp, setSp, dispatch]);
+
+  // Prefill only when the selection in the URL changes, not when a step changes.
+  useEffect(() => {
+    let active = true;
+    const doctorId = positiveId(doctorIdParam);
+    const specialtyId = positiveId(specialtyIdParam);
+    setDoctorError(null);
+
+    if (!doctorId) {
+      setLoadingDoctor(false);
+      if (doctorIdParam !== null || (specialtyIdParam !== null && !specialtyId)) {
+        dispatch({ type: "SET_SPECIALTY", id: specialtyId });
+        dispatch({ type: "SET_STEP", step: 1 });
+        setDoctorError(doctorIdParam !== null
+          ? "Mã bác sĩ không hợp lệ. Vui lòng chọn lại bác sĩ."
+          : "Mã chuyên khoa không hợp lệ. Vui lòng chọn lại chuyên khoa.");
+      } else if (specialtyId && currentSelection.current.specialtyId !== specialtyId) {
+        dispatch({ type: "SET_SPECIALTY", id: specialtyId });
+      }
       return;
     }
 
-    // Nếu có cả doctorId và specialtyId, fetch doctor trước để đảm bảo thông tin đầy đủ
-    if (doctorIdParam) {
-      const doctorId = Number(doctorIdParam);
-      if (!isNaN(doctorId)) {
-        // Chỉ fetch nếu doctorId trong URL khác với state hiện tại
-        if (state.doctorId !== doctorId) {
-          fetchDoctorById(doctorId)
-            .then((doctor) => {
-              // Nếu có specialtyId trong URL, kiểm tra xem có match với doctor không
-              const urlSpecialtyId = specialtyIdParam ? Number(specialtyIdParam) : null;
-              const doctorSpecialtyId = doctor.specialtyId;
-              
-              // Set specialty: ưu tiên URL param, sau đó lấy từ doctor
-              const finalSpecialtyId = urlSpecialtyId || doctorSpecialtyId;
-              
-              // Sử dụng action mới để set cả specialty và doctor cùng lúc, tránh reset
-              if (finalSpecialtyId) {
-                dispatch({
-                  type: "SET_SPECIALTY_AND_DOCTOR",
-                  specialtyId: finalSpecialtyId,
-                  specialtyName: doctor.specialtyName,
-                  doctorId: doctor.id,
-                  doctorFullName: doctor.fullName,
-                  doctorDegree: doctor.degree,
-                  doctorExperience: doctor.experience,
-                  doctorAvatarUrl: doctor.avatarUrl,
-                  doctorDescription: doctor.description,
-                });
-              } else {
-                // Nếu không có specialtyId, chỉ set doctor
-                dispatch({
-                  type: "SET_DOCTOR",
-                  id: doctor.id,
-                  fullName: doctor.fullName,
-                  degree: doctor.degree,
-                  experience: doctor.experience,
-                  avatarUrl: doctor.avatarUrl,
-                  description: doctor.description,
-                  specialtyName: doctor.specialtyName,
-                });
-              }
-            })
-            .catch((err) => {
-              console.error("Không thể lấy thông tin bác sĩ:", err);
-              // Nếu fetch thất bại, vẫn set doctorId và specialtyId nếu có
-              if (specialtyIdParam) {
-                const specialtyId = Number(specialtyIdParam);
-                if (!isNaN(specialtyId) && state.specialtyId !== specialtyId) {
-                  dispatch({
-                    type: "SET_SPECIALTY",
-                    id: specialtyId,
-                  });
-                }
-              }
-              dispatch({
-                type: "SET_DOCTOR",
-                id: doctorId,
-              });
-            })
-            .finally(() => {
-              setLoadingDoctor(false);
-            });
+    setLoadingDoctor(true);
+    fetchDoctorById(doctorId)
+      .then((doctor) => {
+        if (!active) return;
+        // The doctor's actual specialty takes precedence over a conflicting URL parameter.
+        const resolvedSpecialtyId = positiveId(String(doctor.specialtyId ?? "")) ?? specialtyId;
+        if (doctor.id !== doctorId || !resolvedSpecialtyId || !doctor.fullName) {
+          throw new Error("Doctor details are incomplete");
         }
-      }
-    } else if (specialtyIdParam) {
-      // Chỉ có specialtyId, không có doctorId
-      const specialtyId = Number(specialtyIdParam);
-      if (!isNaN(specialtyId) && state.specialtyId !== specialtyId) {
+        // Refreshing the same booking must preserve its date, shift and patients.
+        const saved = currentSelection.current;
+        if (saved.doctorId === doctor.id && saved.specialtyId === resolvedSpecialtyId && saved.doctorFullName) {
+          return;
+        }
         dispatch({
-          type: "SET_SPECIALTY",
-          id: specialtyId,
+          type: "SET_SPECIALTY_AND_DOCTOR",
+          specialtyId: resolvedSpecialtyId,
+          specialtyName: doctor.specialtyName,
+          doctorId: doctor.id,
+          doctorFullName: doctor.fullName,
+          doctorDegree: doctor.degree,
+          doctorExperience: doctor.experience,
+          doctorAvatarUrl: doctor.avatarUrl,
+          doctorDescription: doctor.description,
         });
-      }
-    }
-  }, [sp, state.specialtyId, state.doctorId, dispatch]);
+      })
+      .catch(() => {
+        if (!active) return;
+        dispatch({ type: "SET_SPECIALTY", id: specialtyId });
+        dispatch({ type: "SET_STEP", step: 1 });
+        setDoctorError("Không thể tải thông tin bác sĩ. Vui lòng chọn lại bác sĩ ở bước 1.");
+      })
+      .finally(() => {
+        if (active) setLoadingDoctor(false);
+      });
 
-  // ghi step ra URL khi đổi
-  useEffect(() => {
-    const current = Number(sp.get("step") || 1);
-    if (current !== state.step) {
-      sp.set("step", String(state.step));
-      setSp(sp, { replace: true });
-    }
-  }, [state.step]);
+    return () => {
+      active = false;
+    };
+  }, [doctorIdParam, specialtyIdParam, dispatch]);
 
   return (
     <Container className="appt-wrap py-4">
-      {/* Stepper… (giống Step 1, đánh active theo state.step) */}
-      {state.step === 1 && <Step1 />}
-      {state.step === 2 && <Step2 />}
-      {state.step === 3 && <Step3 />}
-      {state.step === 4 && <Step4 />}
+      {doctorError && <Alert variant="danger">{doctorError}</Alert>}
+      {loadingDoctor ? (
+        <div className="d-flex align-items-center gap-2 py-4" role="status">
+          <Spinner size="sm" /> Đang tải thông tin bác sĩ…
+        </div>
+      ) : (
+        <>
+          {state.step === 1 && <Step1 />}
+          {state.step === 2 && <Step2 />}
+          {state.step === 3 && <Step3 />}
+          {state.step === 4 && <Step4 />}
+        </>
+      )}
     </Container>
   );
 }
