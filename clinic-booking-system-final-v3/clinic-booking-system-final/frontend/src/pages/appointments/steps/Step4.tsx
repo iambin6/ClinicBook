@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Card, Col, Row, Spinner } from "react-bootstrap";
 import { useAppt } from "../../../contexts/AppointmentContext";
 import { bookAppointment, type Appointment } from "../../../api/appointment";
@@ -54,6 +54,8 @@ export default function Step4Review() {
   );
   const [transactionCode, setTransactionCode] = useState<string | null>(null);
   const [confirmedAppointment, setConfirmedAppointment] = useState<Appointment | null>(null);
+  const createdAppointment = useRef<Appointment | null>(null);
+  const requestInFlight = useRef(false);
 
   const patientCount = state.patientSelections.length;
   const billedPatients = Math.max(1, patientCount);
@@ -74,6 +76,7 @@ export default function Step4Review() {
   const canSubmit =
     !submitting &&
     paymentStatus !== "SUCCESS" &&
+    paymentStatus !== "PROCESSING" &&
     state.specialtyId &&
     state.doctorId &&
     state.shiftId &&
@@ -81,6 +84,7 @@ export default function Step4Review() {
     patientCount > 0;
 
   const handlePaymentAndConfirm = async () => {
+    if (requestInFlight.current || paymentStatus === "SUCCESS") return;
     if (!state.specialtyId || !state.doctorId) {
       setError("Thiếu thông tin bác sĩ hoặc chuyên khoa. Vui lòng quay lại bước 1.");
       return;
@@ -100,6 +104,7 @@ export default function Step4Review() {
 
     setError(null);
     setMessage(null);
+    requestInFlight.current = true;
     setSubmitting(true);
     setPaymentStatus("PROCESSING");
 
@@ -126,7 +131,10 @@ export default function Step4Review() {
 
     try {
       // 1. Tạo appointment
-      const res = await bookAppointment(
+      // Retrying a failed payment URL must reuse the booking already created by the server.
+      const res = createdAppointment.current
+        ? { ok: true, data: createdAppointment.current }
+        : await bookAppointment(
         {
           appointment: {
             reason: appointmentReason,
@@ -149,12 +157,15 @@ export default function Step4Review() {
       if (!appointmentNo) {
         throw new Error("Không nhận được mã lịch hẹn từ server");
       }
+      createdAppointment.current = res.data;
 
-      // 2. Nếu là OFFLINE (ONSITE): không cần thanh toán, xác nhận luôn
+      // Offline bookings still await confirmation by the clinic.
       if (appointmentType === "OFFLINE" || state.appointmentType === "ONSITE") {
         setTransactionCode(appointmentNo);
-        setConfirmedAppointment({ ...res.data, status: "CONFIRMED" });
-        setMessage("Đặt lịch thành công! Lịch hẹn đã được xác nhận.");
+        setConfirmedAppointment(res.data);
+        setMessage(res.data.status === "CONFIRMED"
+          ? "Đặt lịch thành công! Lịch hẹn đã được xác nhận."
+          : "Đã gửi yêu cầu đặt lịch. Vui lòng chờ phòng khám xác nhận.");
         setPaymentStatus("SUCCESS");
         setSubmitting(false);
         return;
@@ -193,6 +204,7 @@ export default function Step4Review() {
       setError(message);
       setPaymentStatus("FAILED");
     } finally {
+      requestInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -417,7 +429,7 @@ export default function Step4Review() {
           <Alert variant="success" className="mb-0">
             Lịch hẹn của bạn với bác sĩ <strong>{confirmedAppointment.doctorName ?? state.doctorFullName}</strong>{" "}
             vào ngày <strong>{formatDate(confirmedAppointment.appointmentDate ?? state.dateISO)}</strong>{" "}
-            đã được xác nhận.
+            {confirmedAppointment.status === "CONFIRMED" ? "đã được xác nhận." : "đang chờ phòng khám xác nhận."}
           </Alert>
         )}
       </div>
