@@ -147,7 +147,6 @@
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
             <version>4.25.0</version>
-            <scope>test</scope>
         </dependency>
         <!-- WebDriverManager: tự quản lý binary ChromeDriver/EdgeDriver -->
         <dependency>
@@ -181,23 +180,22 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
-        <!-- GeminiClient calls the REST API using java.net.http.HttpClient. -->
+        <!--        gemini-->
+        <dependency>
+            <groupId>com.google.genai</groupId>
+            <artifactId>google-genai</artifactId>
+            <version>1.0.0</version>
+        </dependency>
         <!-- Qdrant Java client -->
         <dependency>
             <groupId>io.qdrant</groupId>
             <artifactId>client</artifactId>
             <version>1.15.0</version>
         </dependency>
-        <!-- Qdrant exposes these as runtime dependencies; our retrieval code uses their APIs directly. -->
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>1.65.1</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>1.65.1</version>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vertex-ai-gemini</artifactId>
+            <version>1.1.0-RC1</version>
         </dependency>
         <!--        rss_source 13/11/2025-->
         <dependency>

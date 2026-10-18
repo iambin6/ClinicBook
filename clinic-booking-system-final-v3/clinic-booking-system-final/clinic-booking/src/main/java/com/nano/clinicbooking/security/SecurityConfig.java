@@ -82,7 +82,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/health").permitAll()
                         //  Cho phép OAuth2 callback
                         .requestMatchers("/login/oauth2/code/**").permitAll()
                         .requestMatchers("/auth/oauth2/user-info").permitAll()
