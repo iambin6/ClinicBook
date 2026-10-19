@@ -5,12 +5,11 @@ import com.nano.clinicbooking.model.Appointment;
 import com.nano.clinicbooking.model.User;
 import com.nano.clinicbooking.repository.appointment.AppointmentRepository;
 import com.nano.clinicbooking.service.email.send_register.EmailService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +23,7 @@ public class AppointmentAnnouncer {
     /**
      * Gửi email xác nhận cho một lịch hẹn cụ thể (gọi ngay sau khi tạo)
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void announceAppointment(AppointmentDto dto) {
         if (dto == null) {
             log.warn("⚠️ Không thể gửi email vì AppointmentDto = null");
@@ -46,8 +45,7 @@ public class AppointmentAnnouncer {
             }
 
             // 📨 Tiêu đề email
-            String subject = "📅 Xác nhận lịch hẹn khám bệnh ngày "
-                    + dto.getAppointmentDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            String subject = "Đã tiếp nhận yêu cầu đặt lịch khám";
 
             // 🧩 Sinh nội dung HTML
             String html = appointmentContent.buildAppointmentEmailHtml(patient, dto, subject);

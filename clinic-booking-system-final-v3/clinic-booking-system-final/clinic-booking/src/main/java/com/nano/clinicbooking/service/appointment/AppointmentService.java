@@ -6,14 +6,18 @@ import com.nano.clinicbooking.model.Appointment;
 import com.nano.clinicbooking.dto.request.BookAppointmentRequest;
 import com.nano.clinicbooking.service.email.sent_appointment.AppointmentAnnouncer;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentService implements IAppointmentService {
 
     private final AppointmentCreationService creationService;
@@ -31,13 +35,17 @@ public class AppointmentService implements IAppointmentService {
         // Sau khi tạo xong, lấy lại DTO để gửi email
         var dto = queryService.getAppointmentById(created.getId());
 
-        // 👇 Gửi email thông báo cho bệnh nhân
-        try {
-            appointmentAnnouncer.announceAppointment(dto);
-        } catch (Exception e) {
-            // Không để lỗi email làm fail API
-            System.err.println("Email send failed: " + e.getMessage());
-        }
+        // Send only once the booking transaction has committed successfully.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    appointmentAnnouncer.announceAppointment(dto);
+                } catch (Exception ex) {
+                    log.error("Booking {} saved, but notification failed", dto.getId(), ex);
+                }
+            }
+        });
         return created;
     }
 

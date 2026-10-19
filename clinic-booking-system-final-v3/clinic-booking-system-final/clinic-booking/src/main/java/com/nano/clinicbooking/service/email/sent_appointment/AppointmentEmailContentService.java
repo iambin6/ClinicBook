@@ -2,7 +2,7 @@ package com.nano.clinicbooking.service.email.sent_appointment;
 
 import com.nano.clinicbooking.dto.response.AppointmentDto;
 import com.nano.clinicbooking.model.User;
-import com.nano.clinicbooking.service.gemini.GeminiClient;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +11,6 @@ import java.util.Locale;
 
 @Service
 public class AppointmentEmailContentService implements AppointmentEmailContentProvider {
-
-    private final GeminiClient gemini;
-    public AppointmentEmailContentService(GeminiClient gemini) { this.gemini = gemini; }
 
     @Value("${clinic.name:ClinicBooking}")
     private String clinicName;
@@ -39,43 +36,10 @@ public class AppointmentEmailContentService implements AppointmentEmailContentPr
         String status = app.getStatus() != null ? app.getStatus().name() : "—";
         String subj = (subject == null || subject.isBlank()) ? "Thông báo lịch hẹn khám bệnh" : subject;
 
-        String prompt = """
-            Bạn là trợ lý soạn email cho phòng khám "%s".
-            YÊU CẦU NGHIÊM NGẶT:
-            - Trả về DUY NHẤT 1 THẺ <div> (KHÔNG có <html>, <body>, <style>, <script>, backticks).
-            - Dùng inline style, mobile-friendly, max-width ~640px.
-            - KHÔNG có nút bấm/CTA, KHÔNG chèn liên kết.
-            - Giọng điệu thân thiện, chuyên nghiệp, ấm áp.
-
-            Bố cục:
-            - Preheader ẩn: sử dụng giá trị Subject
-            - Header: tên phòng khám + dòng nhỏ "Thông báo lịch hẹn"
-            - Lời chào: tên người nhận
-            - Thông tin chi tiết: ngày, giờ, bác sĩ, chuyên khoa, lý do
-            - Trạng thái hiện tại của lịch hẹn
-            - Card "Tài khoản": hiển thị Email
-            - Hỗ trợ và chữ ký đội ngũ
-            - Footer nhỏ
-
-            DỮ LIỆU:
-            - Subject: %s
-            - Họ tên: %s
-            - Ngày: %s
-            - Giờ: %s
-            - Bác sĩ: %s
-            - Chuyên khoa: %s
-            - Lý do: %s
-            - Trạng thái: %s
-            - Email: %s
-        """.formatted(clinicName, subj, name, date, time, doctor, specialty, reason, status, email);
-
-        String html = gemini.generateHtml(prompt);
-        if (isAcceptable(html)) return html.trim();
-
-        return buildFallbackHtml(clinicName, subj, name, date, time, doctor, specialty, reason, status, email);
+        return buildFallbackHtml(safe(clinicName), safe(subj), name, date, time, doctor, specialty, reason, status, email);
     }
 
-    /** 🧩 HTML fallback trong trường hợp Gemini trả về lỗi hoặc không hợp lệ */
+    /** Deterministic booking receipt; delivery does not depend on an AI provider. */
     private String buildFallbackHtml(String clinicName, String subj, String name, String date, String time,
                                      String doctor, String specialty, String reason, String status, String email) {
         return String.format("""
@@ -105,17 +69,7 @@ public class AppointmentEmailContentService implements AppointmentEmailContentPr
         """, subj, clinicName, name, clinicName, date, time, doctor, specialty, reason, status, email, clinicName);
     }
 
-    /** Kiểm tra tính hợp lệ của HTML trả về từ Gemini */
-    private static boolean isAcceptable(String html) {
-        if (html == null) return false;
-        String s = html.trim().toLowerCase();
-        return s.startsWith("<div") && s.endsWith("</div>")
-                && !s.contains("<html") && !s.contains("<body")
-                && !s.contains("<style") && !s.contains("<script")
-                && !s.contains("```");
-    }
-
     private static String safe(String s) {
-        return (s == null || s.isBlank()) ? "—" : s.trim();
+        return (s == null || s.isBlank()) ? "—" : s.trim().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 }
