@@ -1,3 +1,45 @@
+/* ========== PUBLIC HEADER WRAPPER (LOGIN TOGGLE ANIMATION) ========== */
+.public-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.public-layout.on-login-page {
+  background: #050505;
+}
+
+body.on-login-page {
+  background: #050505 !important;
+}
+
+body.lamp-off .header,
+body.lamp-off .public-header-wrapper {
+  display: none !important;
+}
+
+@keyframes headerSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.public-header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+}
+
+.public-layout.on-login-page .public-header-wrapper.header-visible {
+  animation: headerSlideDown 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* ========== HEADER ========== */
 .header {
   position: sticky;

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useOutletContext } from 'react-router-dom';
 import { loginApi } from '../../api/auth';
 import { getErrorMessage } from '../../utils/error';
 import '../../styles/login.css';
 import { useToast } from '../../components/common/ToastProvider';
 import { useAuth } from '../../hooks/useAuth';
+import type { PublicLayoutContextType } from '../../components/common/PublicLayout';
 
 interface FireflyData {
   id: number;
@@ -30,7 +31,10 @@ export default function Login() {
   const { login } = useAuth();
 
   // Lamp State
-  const [isOn, setIsOn] = useState(false);
+  const outlet = useOutletContext<PublicLayoutContextType | null>();
+  const [localIsOn, setLocalIsOn] = useState(false);
+  const isOn = outlet ? outlet.isLampOn : localIsOn;
+  const setIsOn = outlet ? outlet.setIsLampOn : setLocalIsOn;
   const [cordPos, setCordPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [fireflies, setFireflies] = useState<FireflyData[]>([]);
@@ -200,7 +204,8 @@ export default function Login() {
           {/* Pull string handle */}
           <div
             className={`string-handle ${isDragging ? 'dragging' : ''}`}
-            aria-label="Kéo dây bật đèn"
+            aria-label={isOn ? "Kéo dây tắt đèn" : "Kéo dây bật đèn"}
+            title={isOn ? "Kéo dây để tắt đèn" : "Kéo dây để bật đèn"}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

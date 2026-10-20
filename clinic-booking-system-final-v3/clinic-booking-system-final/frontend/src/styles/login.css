@@ -9,9 +9,19 @@
   display: flex;
   overflow: hidden;
   background: #050505;
-  transition: background-color 0.8s ease;
+  transition: background-color 0.8s ease, min-height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: inherit;
   color: #fff;
+}
+
+.public-layout.on-login-page.lamp-off .lamp-room,
+body.lamp-off .lamp-room {
+  min-height: 100vh;
+}
+
+.public-layout.on-login-page.lamp-on .lamp-room,
+body.lamp-on .lamp-room {
+  min-height: calc(100vh - 80px);
 }
 
 .lamp-room.on {
@@ -571,6 +581,8 @@
    RESPONSIVE DESIGN
    ========================================================================== */
 @media (max-width: 900px) {
+  .public-layout.on-login-page.lamp-off .lamp-room,
+  .public-layout.on-login-page.lamp-on .lamp-room,
   .lamp-room {
     flex-direction: column;
     overflow-y: auto;
