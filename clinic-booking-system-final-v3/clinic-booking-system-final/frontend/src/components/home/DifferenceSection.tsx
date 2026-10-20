@@ -1,5 +1,6 @@
 import { Container, Row, Col, Carousel } from 'react-bootstrap';
 import { useState, useMemo } from 'react';
+import '../../styles/difference-section.css';
 
 const carouselReviewImages = [
   '/picture/carouselReview/anh1.png',
@@ -35,18 +36,39 @@ export default function DifferenceSection() {
   };
 
   return (
-    <section className="difference-section py-5 bg-light">
+    <section className="difference-section py-5">
       <Container>
-        <Row className="mb-4">
+        <Row className="mb-3">
           <Col md={12} className="text-center">
-            <h2 className="display-5 fw-bold text-primary mb-4">CHÚNG TÔI CÓ SỰ KHÁC BIỆT</h2>
-            <p className="lead text-muted mx-auto" style={{ maxWidth: '900px' }}>
-              Hệ thống phòng khám của chúng tôi là nơi tinh hoa y học châu Âu hội tụ cùng sự ân cần, nồng hậu của người châu Á. 
-              Chúng tôi tạo ra một môi trường hiện đại, thoải mái, nơi bác sĩ là những người bạn thân của bạn, 
-              và bạn chính là trung tâm của dịch vụ chất lượng cao với giá phải chăng.
+            <span className="difference-badge mb-2">ĐẲNG CẤP VÀ UY TÍN</span>
+            <h2 className="difference-title mt-2 mb-3">CHÚNG TÔI TẠO RA SỰ KHÁC BIỆT</h2>
+            <p className="difference-desc mx-auto" style={{ maxWidth: '850px' }}>
+              Hệ thống phòng khám là nơi tinh hoa y học hội tụ cùng sự ân cần, nồng hậu. 
+              Chúng tôi tạo ra một môi trường hiện đại, an tâm, nơi bác sĩ luôn lắng nghe 
+              và bạn chính là trung tâm của dịch vụ y tế chất lượng cao.
             </p>
           </Col>
         </Row>
+
+        {/* Trust Stats Bar */}
+        <div className="difference-stats">
+          <div className="difference-stat-card">
+            <div className="difference-stat-number">50,000+</div>
+            <div className="difference-stat-label">Lượt khám an tâm</div>
+          </div>
+          <div className="difference-stat-card">
+            <div className="difference-stat-number">100+</div>
+            <div className="difference-stat-label">Bác sĩ chuyên khoa</div>
+          </div>
+          <div className="difference-stat-card">
+            <div className="difference-stat-number">15+</div>
+            <div className="difference-stat-label">Năm kinh nghiệm</div>
+          </div>
+          <div className="difference-stat-card">
+            <div className="difference-stat-number">99.2%</div>
+            <div className="difference-stat-label">Tỷ lệ hài lòng</div>
+          </div>
+        </div>
 
         {slides.length > 0 && (
           <Row className="mt-5">

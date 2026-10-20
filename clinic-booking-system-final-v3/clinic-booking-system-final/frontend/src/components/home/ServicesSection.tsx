@@ -38,21 +38,23 @@ export default function ServicesSection() {
       <Container>
         <Row className="g-4">
           <Col md={5}>
-            <Card className="h-100 shadow-sm border-0">
+            <Card className="services-highlight-card h-100 border-0">
               <Card.Body className="p-4">
-                <h3 className="mb-4 text-white bg-primary p-3 rounded fw-bold">
-                  DỊCH VỤ ĐIỀU TRỊ NỔI BẬT
-                </h3>
+                <div className="mb-4">
+                  <span className="services-badge">DANH MỤC ĐIỀU TRỊ</span>
+                  <h3 className="services-title-left mt-2">Dịch Vụ Điều Trị Nổi Bật</h3>
+                </div>
                 <ListGroup variant="flush" className="mb-3">
                   {services.map((service, index) => (
-                    <ListGroup.Item key={index} className="px-0 py-2 border-0">
-                      <span className="text-primary me-2">•</span>
-                      {service}
+                    <ListGroup.Item key={index} className="service-list-item px-0 py-2 border-0">
+                      <span className="service-check-icon" aria-hidden="true">✓</span>
+                      <span>{service}</span>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
-                <NavLink to="/appointment" className="text-primary text-decoration-none fw-bold">
-                  Xem tất cả các dịch vụ →
+                <NavLink to="/appointment" className="services-explore-link">
+                  <span>Đặt khám theo dịch vụ</span>
+                  <span className="link-arrow">→</span>
                 </NavLink>
               </Card.Body>
             </Card>
@@ -61,12 +63,13 @@ export default function ServicesSection() {
             <Row className="g-4">
               {specialties.map((specialty, index) => (
                 <Col key={index} md={12}>
-                  <Card className="h-100 shadow-sm border-0">
+                  <Card className="specialty-overview-card h-100 border-0">
                     <Card.Body className="p-4">
-                      <h4 className="text-primary fw-bold mb-3">{specialty.title}</h4>
-                      <p className="text-muted mb-3">{specialty.description}</p>
-                      <NavLink to="/appointment" className="text-primary text-decoration-none fw-bold">
-                        Tìm hiểu thêm →
+                      <h4 className="specialty-title mb-2">{specialty.title}</h4>
+                      <p className="specialty-desc mb-3">{specialty.description}</p>
+                      <NavLink to="/appointment" className="specialty-action-link">
+                        <span>Đặt lịch chuyên khoa này</span>
+                        <span className="link-arrow">→</span>
                       </NavLink>
                     </Card.Body>
                   </Card>

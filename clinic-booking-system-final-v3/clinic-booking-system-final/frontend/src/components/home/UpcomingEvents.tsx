@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Col, Row, Spinner } from "react-bootstrap";
+import { Alert, Button, Card, Col, Container, Row, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -8,7 +8,7 @@ import {
   registerEvent,
   type UserEventItem,
 } from "../../api/patientEvents";
-import "../../styles/appointmentlist.css";
+import "../../styles/events-section.css";
 
 function formatDateTime(value?: string): string {
   if (!value) return "—";
@@ -115,83 +115,92 @@ export default function UpcomingEvents() {
   };
 
   return (
-    <section className="home-section events-section">
-      <div className="section-header text-center mb-4">
-        <h2 className="fw-bold">Sự kiện nổi bật</h2>
-        <p className="text-muted mb-0">
-          Đăng ký tham gia các chương trình ưu đãi và sự kiện chăm sóc sức khỏe mới nhất của chúng tôi.
-        </p>
-      </div>
-
-      {error && (
-        <Alert variant="danger" onClose={() => setError("")} dismissible>
-          {error}
-        </Alert>
-      )}
-      {successMessage && (
-        <Alert variant="success" onClose={() => setSuccessMessage("")} dismissible>
-          {successMessage}
-        </Alert>
-      )}
-
-      {loading ? (
-        <div className="d-flex justify-content-center py-5">
-          <Spinner animation="border" />
+    <section className="events-section">
+      <Container>
+        <div className="section-header text-center mb-5">
+          <span className="events-badge">CHƯƠNG TRÌNH &amp; ƯU ĐÃI</span>
+          <h2 className="events-title mt-2">Sự Kiện Y Tế Nổi Bật</h2>
+          <p className="events-subtitle text-muted mb-0">
+            Đăng ký tham gia các chương trình ưu đãi và sự kiện chăm sóc sức khỏe mới nhất từ phòng khám.
+          </p>
         </div>
-      ) : upcomingEvents.length === 0 ? (
-        <Card body className="text-center text-muted">
-          Hiện chưa có sự kiện nào.
-        </Card>
-      ) : (
-        <Row className="g-4 justify-content-center">
-          {upcomingEvents.map((event) => (
-            <Col key={event.id} xs={12} md={6} lg={4} className="d-flex">
-              <Card className="h-100 shadow-sm border-0 w-100">
-                <Card.Body className="d-flex flex-column">
-                  <div className="mb-2">
-                    <div className="badge bg-primary-subtle text-primary">
-                      {formatDateTime(event.startDate)}
+
+        {error && (
+          <Alert variant="danger" onClose={() => setError("")} dismissible>
+            {error}
+          </Alert>
+        )}
+        {successMessage && (
+          <Alert variant="success" onClose={() => setSuccessMessage("")} dismissible>
+            {successMessage}
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="d-flex justify-content-center py-5">
+            <Spinner animation="border" />
+          </div>
+        ) : upcomingEvents.length === 0 ? (
+          <Card body className="text-center text-muted border-0 py-5 rounded-4 shadow-sm">
+            Hiện chưa có sự kiện nào đang diễn ra.
+          </Card>
+        ) : (
+          <Row className="g-4 justify-content-center">
+            {upcomingEvents.map((event) => (
+              <Col key={event.id} xs={12} md={6} lg={4} className="d-flex">
+                <Card className="event-card h-100 border-0 w-100">
+                  <Card.Body className="p-4 d-flex flex-column">
+                    <div className="mb-2">
+                      <div className="event-date-chip">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>{formatDateTime(event.startDate)}</span>
+                      </div>
                     </div>
-                  </div>
-                  <Card.Title>{event.title}</Card.Title>
-                  {event.description && (
-                    <Card.Text className="text-muted">{event.description}</Card.Text>
-                  )}
-                  <div className="mt-auto">
-                    <div className="small text-muted mb-1">
-                      <strong>Địa điểm:</strong> {formatLocation(event.location)}
-                    </div>
-                    <div className="small text-muted mb-3">
-                      <strong>Voucher:</strong> {formatVoucher(event)}
-                    </div>
-                    {registeredIds.includes(event.id) ? (
-                      <Button variant="outline-secondary" disabled className="w-100">
-                        Bạn đã đăng ký sự kiện này
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        onClick={() => handleRegister(event.id)}
-                        disabled={registeringId === event.id || (isAuthenticated && !canRegister)}
-                        className="w-100"
-                      >
-                        {registeringId === event.id ? (
-                          <>
-                            <Spinner animation="border" size="sm" className="me-2" />
-                            Đang đăng ký...
-                          </>
-                        ) : (
-                          !isAuthenticated ? "Đăng nhập để đăng ký" : canRegister ? "Đăng ký tham gia" : "Chỉ dành cho bệnh nhân"
-                        )}
-                      </Button>
+                    <h3 className="event-title">{event.title}</h3>
+                    {event.description && (
+                      <p className="event-desc">{event.description}</p>
                     )}
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
+                    <div className="mt-auto">
+                      <div className="event-meta-box">
+                        <div>
+                          <strong>Địa điểm:</strong> {formatLocation(event.location)}
+                        </div>
+                        <div>
+                          <strong>Voucher:</strong> {formatVoucher(event)}
+                        </div>
+                      </div>
+                      {registeredIds.includes(event.id) ? (
+                        <Button variant="outline-secondary" disabled className="event-btn w-100">
+                          Bạn đã đăng ký sự kiện này
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => handleRegister(event.id)}
+                          disabled={registeringId === event.id || (isAuthenticated && !canRegister)}
+                          className="event-btn btn-primary w-100"
+                        >
+                          {registeringId === event.id ? (
+                            <>
+                              <Spinner animation="border" size="sm" className="me-2" />
+                              Đang đăng ký...
+                            </>
+                          ) : (
+                            !isAuthenticated ? "Đăng nhập để đăng ký" : canRegister ? "Đăng ký tham gia" : "Chỉ dành cho bệnh nhân"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
+      </Container>
     </section>
   );
 }

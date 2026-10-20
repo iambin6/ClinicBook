@@ -30,20 +30,31 @@
 
 /* Base style: giống nút header (viên thuốc, viền, shadow, blur nhẹ) */
 .qa-btn{
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   text-decoration: none !important;
   border-radius: 9999px;
-  padding: 14px 26px;               /* kích thước to hơn */
-  min-width: 210px;                 /* đồng đều chiều ngang */
+  padding: 14px 28px;               /* kích thước to hơn */
+  min-width: 220px;                 /* đồng đều chiều ngang */
   text-align: center;
-  font-size: larger;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.2;
   border: 1px solid var(--qa-border);
-  box-shadow: var(--qa-shadow);
-  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
-  backdrop-filter: saturate(130%) blur(2px);
-  -webkit-backdrop-filter: saturate(130%) blur(2px);
+  box-shadow: 0 12px 32px rgba(1, 32, 71, 0.16);
+  transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1), filter .2s ease, box-shadow .22s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.qa-icon {
+  flex-shrink: 0;
+  transition: transform 0.22s ease;
+}
+.qa-btn:hover .qa-icon {
+  transform: scale(1.12);
 }
 
 /* Biến thể giống “Đặt lịch khám” (primary pill) */

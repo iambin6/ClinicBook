@@ -52,9 +52,10 @@ export default function NewsSection() {
     <section className="news-section py-5">
       <Container>
         <div className="news-section__header text-center mb-5">
-          <h2 className="news-section__title">Tin tức y tế</h2>
+          <span className="news-badge">KIẾN THỨC &amp; ĐỜI SỐNG</span>
+          <h2 className="news-section__title mt-2">Tin Tức Y Tế &amp; Sức Khỏe</h2>
           <p className="news-section__subtitle text-muted">
-            Cập nhật những thông tin y tế mới nhất và hữu ích
+            Cập nhật những kiến thức y khoa chuẩn xác, phương pháp phòng bệnh và thông tin hữu ích từ chuyên gia.
           </p>
         </div>
 
