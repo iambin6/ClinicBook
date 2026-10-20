@@ -1,14 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { askChatbot, type ChatMessage } from '../../api/chatbot';
 import '../../styles/chatbot.css';
 
+const QUICK_PROMPTS = [
+  { icon: '🩺', text: 'Đặt lịch khám nhanh thế nào?' },
+  { icon: '👨‍⚕️', text: 'Bác sĩ chuyên khoa nổi bật' },
+  { icon: '⏰', text: 'Giờ làm việc của phòng khám' },
+  { icon: '🎟️', text: 'Ưu đãi và voucher hiện có' },
+];
+
 export default function Chatbot() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      text: 'Xin chào! Tôi là trợ lý ảo của Nano Clinic. Tôi có thể giúp bạn tìm thông tin về bác sĩ, lịch khám, sự kiện và dịch vụ. Bạn cần hỗ trợ gì?',
+      text: 'Xin chào! Tôi là trợ lý ảo của Nano Clinic. Tôi có thể giúp bạn tìm thông tin về bác sĩ, chuyên khoa, lịch khám và dịch vụ y tế. Bạn cần hỗ trợ gì hôm nay?',
       isUser: false,
       timestamp: new Date(),
     },
@@ -23,21 +33,27 @@ export default function Chatbot() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTooltip(false);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (isOpen && !isMinimized) {
       scrollToBottom();
-      // Focus input when chat opens
       setTimeout(() => {
         inputRef.current?.focus();
-      }, 100);
+      }, 120);
     }
   }, [messages, isOpen, isMinimized]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  const sendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: inputValue.trim(),
+      text: textToSend.trim(),
       isUser: true,
       timestamp: new Date(),
     };
@@ -55,10 +71,10 @@ export default function Chatbot() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
+    } catch {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.',
+        text: 'Xin lỗi, đã có lỗi kết nối tạm thời. Vui lòng thử lại sau ít giây hoặc liên hệ hotline phòng khám.',
         isUser: false,
         timestamp: new Date(),
       };
@@ -68,6 +84,10 @@ export default function Chatbot() {
     }
   };
 
+  const handleSend = () => {
+    sendMessage(inputValue);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -75,16 +95,28 @@ export default function Chatbot() {
     }
   };
 
+  const handlePromptClick = (promptText: string) => {
+    sendMessage(promptText);
+  };
+
+  const handleClearChat = () => {
+    setMessages([
+      {
+        id: '1',
+        text: 'Xin chào! Tôi là trợ lý ảo của Nano Clinic. Tôi có thể giúp bạn tìm thông tin về bác sĩ, chuyên khoa, lịch khám và dịch vụ y tế. Bạn cần hỗ trợ gì hôm nay?',
+        isUser: false,
+        timestamp: new Date(),
+      },
+    ]);
+  };
+
   const handleToggle = () => {
     if (isOpen) {
-      if (isMinimized) {
-        setIsMinimized(false);
-      } else {
-        setIsMinimized(true);
-      }
+      setIsMinimized(!isMinimized);
     } else {
       setIsOpen(true);
       setIsMinimized(false);
+      setShowTooltip(false);
     }
   };
 
@@ -93,73 +125,134 @@ export default function Chatbot() {
     setIsMinimized(false);
   };
 
+  const handleExpandFullscreen = () => {
+    setIsOpen(false);
+    navigate('/chatbot');
+  };
+
   return (
     <>
-      {/* Chat Button - Floating ở góc dưới phải */}
+      {/* Tooltip mời trò chuyện */}
+      {showTooltip && !isOpen && (
+        <div className="chatbot-floating-tooltip">
+          <span>👋 Cần tư vấn y tế hoặc đặt lịch? Nhắn tin với tôi nhé!</span>
+          <button
+            type="button"
+            className="chatbot-tooltip-close"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowTooltip(false);
+            }}
+            aria-label="Đóng gợi ý"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Floating Chat Button */}
       <button
         className={`chatbot-button ${isOpen ? 'chatbot-button--hidden' : ''}`}
         onClick={handleToggle}
-        aria-label="Mở chatbot"
+        aria-label="Mở trợ lý ảo AI"
       >
+        <span className="chatbot-btn-online-badge" />
         <svg
-          width="24"
-          height="24"
+          width="26"
+          height="26"
           viewBox="0 0 24 24"
           fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <path
-            d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H6L4 18V4H20V16Z"
-            fill="white"
-          />
-          <path
-            d="M7 9H17V11H7V9ZM7 12H15V14H7V12ZM7 6H17V8H7V6Z"
-            fill="white"
-          />
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          <path d="M12 7v2" />
+          <path d="M12 13v.01" />
         </svg>
       </button>
 
-      {/* Chat Modal */}
+      {/* Chatbot Modal */}
       {isOpen && (
         <div className={`chatbot-modal ${isMinimized ? 'chatbot-modal--minimized' : ''}`}>
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header__info">
               <div className="chatbot-header__avatar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"
-                    fill="white"
-                  />
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <circle cx="12" cy="5" r="2" />
+                  <path d="M12 7v4" />
+                  <line x1="8" y1="16" x2="8" y2="16" />
+                  <line x1="16" y1="16" x2="16" y2="16" />
                 </svg>
               </div>
               <div>
-                <div className="chatbot-header__title">Nano Clinic Assistant</div>
-                <div className="chatbot-header__status">Đang trực tuyến</div>
+                <div className="chatbot-header__title">Nano Clinic AI</div>
+                <div className="chatbot-header__status">
+                  <span className="status-live-dot" />
+                  Trực tuyến 24/7
+                </div>
               </div>
             </div>
+
             <div className="chatbot-header__actions">
+              {/* Nút Clear Chat */}
               <button
+                type="button"
                 className="chatbot-header__btn"
-                onClick={handleToggle}
-                aria-label="Thu nhỏ"
+                onClick={handleClearChat}
+                title="Làm mới cuộc trò chuyện"
+                aria-label="Làm mới"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 4V12M4 8H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                 </svg>
               </button>
+
+              {/* Nút Toàn màn hình */}
               <button
+                type="button"
+                className="chatbot-header__btn"
+                onClick={handleExpandFullscreen}
+                title="Mở rộng toàn trang"
+                aria-label="Mở toàn màn hình"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 3 21 3 21 9" />
+                  <polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" />
+                  <line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              </button>
+
+              {/* Nút Thu nhỏ */}
+              <button
+                type="button"
+                className="chatbot-header__btn"
+                onClick={handleToggle}
+                title={isMinimized ? "Phóng to" : "Thu nhỏ"}
+                aria-label="Thu nhỏ"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+
+              {/* Nút Đóng */}
+              <button
+                type="button"
                 className="chatbot-header__btn"
                 onClick={handleClose}
+                title="Đóng chat"
                 aria-label="Đóng"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path
-                    d="M12 4L4 12M4 4L12 12"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
@@ -174,25 +267,57 @@ export default function Chatbot() {
                     key={message.id}
                     className={`chatbot-message ${message.isUser ? 'chatbot-message--user' : 'chatbot-message--bot'}`}
                   >
-                    <div
-                      className="chatbot-message__content"
-                      dangerouslySetInnerHTML={{ __html: message.text }}
-                    />
-                    <div className="chatbot-message__time">
-                      {message.timestamp.toLocaleTimeString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                    {!message.isUser && (
+                      <div className="chatbot-bot-avatar-mini" aria-hidden="true">
+                        AI
+                      </div>
+                    )}
+                    <div className="chatbot-message-bubble-wrapper">
+                      <div
+                        className="chatbot-message__content"
+                        dangerouslySetInnerHTML={{ __html: message.text }}
+                      />
+                      <div className="chatbot-message__time">
+                        {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </div>
                     </div>
                   </div>
                 ))}
+
+                {/* Quick Prompts Chips khi cuộc hội thoại mới bắt đầu */}
+                {messages.length === 1 && !isLoading && (
+                  <div className="chatbot-quick-prompts">
+                    <div className="chatbot-quick-prompts-title">Gợi ý câu hỏi thường gặp:</div>
+                    <div className="chatbot-chips-grid">
+                      {QUICK_PROMPTS.map((p, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className="chatbot-prompt-chip"
+                          onClick={() => handlePromptClick(p.text)}
+                        >
+                          <span className="chip-icon">{p.icon}</span>
+                          <span>{p.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading indicator */}
                 {isLoading && (
                   <div className="chatbot-message chatbot-message--bot">
-                    <div className="chatbot-message__content">
-                      <div className="chatbot-typing">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                    <div className="chatbot-bot-avatar-mini" aria-hidden="true">
+                      AI
+                    </div>
+                    <div className="chatbot-message__content chatbot-typing-bubble">
+                      <div className="chatbot-typing-dots">
+                        <span />
+                        <span />
+                        <span />
                       </div>
                     </div>
                   </div>
@@ -206,23 +331,22 @@ export default function Chatbot() {
                   ref={inputRef}
                   type="text"
                   className="chatbot-input"
-                  placeholder="Nhập câu hỏi của bạn..."
+                  placeholder="Nhập câu hỏi y tế hoặc đặt khám..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
                   disabled={isLoading}
                 />
                 <button
-                  className="chatbot-send-btn"
+                  type="button"
+                  className={`chatbot-send-btn ${inputValue.trim() ? 'has-text' : ''}`}
                   onClick={handleSend}
                   disabled={!inputValue.trim() || isLoading}
                   aria-label="Gửi tin nhắn"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M2 21L23 12L2 3V10L17 12L2 14V21Z"
-                      fill="currentColor"
-                    />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
                 </button>
               </div>
@@ -233,4 +357,3 @@ export default function Chatbot() {
     </>
   );
 }
-

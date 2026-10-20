@@ -5,8 +5,6 @@ import ServicesSection from '../../components/home/ServicesSection';
 import DoctorsSection from '../../components/home/DoctorsSection';
 import UpcomingEvents from '../../components/home/UpcomingEvents';
 import NewsSection from '../../components/home/NewsSection';
-import Chatbot from '../../components/chatbot/Chatbot';
-
 export default function Home(){
   return (
     <>
@@ -17,7 +15,6 @@ export default function Home(){
       <DoctorsSection />
       <UpcomingEvents />
       <NewsSection />
-      <Chatbot />
     </>
   );
 }

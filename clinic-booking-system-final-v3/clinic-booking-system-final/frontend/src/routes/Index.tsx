@@ -54,6 +54,7 @@ import Doctors from '../pages/guest/Doctors';
 import Services from '../pages/guest/Services';
 import AboutPage from '../pages/guest/About';
 import SpecialtyDetail from '../pages/guest/SpecialtyDetail';
+import ChatbotPage from '../pages/guest/ChatbotPage';
 
 
 
@@ -68,6 +69,7 @@ export default function AppRoutes() {
         <Route path="/services" element={<Services />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/specialty/:id" element={<SpecialtyDetail />} />
+        <Route path="/chatbot" element={<ChatbotPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

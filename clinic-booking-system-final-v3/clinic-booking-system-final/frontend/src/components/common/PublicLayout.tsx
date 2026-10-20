@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
+import Chatbot from "../chatbot/Chatbot";
 
 export interface PublicLayoutContextType {
   isLampOn: boolean;
@@ -69,6 +70,7 @@ export default function PublicLayout() {
           <Footer />
         </div>
       )}
+      {!isLoginPage && normalizedPath !== "/chatbot" && <Chatbot />}
     </div>
   );
 }
