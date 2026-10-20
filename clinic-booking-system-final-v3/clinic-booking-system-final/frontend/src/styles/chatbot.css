@@ -483,6 +483,68 @@
   transform: scale(0.94);
 }
 
+/* Error bubble style & Action buttons */
+.chatbot-message__content--error {
+  background: #fff5f5 !important;
+  border-color: #fed7d7 !important;
+  color: #c53030 !important;
+}
+
+.chatbot-message__error-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.chatbot-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #0e82fd;
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(14, 130, 253, 0.25);
+}
+
+.chatbot-retry-btn:hover:not(:disabled) {
+  background: #0266c8;
+  transform: translateY(-1px);
+}
+
+.chatbot-retry-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chatbot-hotline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.chatbot-hotline-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
 /* Mobile responsive */
 @media (max-width: 576px) {
   .chatbot-modal {

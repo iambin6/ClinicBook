@@ -50,19 +50,24 @@ export default function ChatbotPage() {
 
     try {
       const response = await askChatbot(userMessage.text);
+      const isUnavailable = response.includes('Xin lỗi bạn, trợ lý AI hiện');
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         text: response,
         isUser: false,
         timestamp: new Date(),
+        isError: isUnavailable,
+        retryText: isUnavailable ? userMessage.text : undefined,
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: 'Xin lỗi, đã có lỗi kết nối tạm thời đến hệ thống AI. Vui lòng thử lại sau ít giây hoặc liên hệ hotline phòng khám.',
+        text: 'Xin lỗi, đã có lỗi kết nối tạm thời đến hệ thống AI. Vui lòng bấm thử lại hoặc liên hệ hotline phòng khám.',
         isUser: false,
         timestamp: new Date(),
+        isError: true,
+        retryText: userMessage.text,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -190,9 +195,34 @@ export default function ChatbotPage() {
                 )}
                 <div className="chatbot-message-bubble-wrapper">
                   <div
-                    className="chatbot-message__content"
+                    className={`chatbot-message__content ${message.isError ? 'chatbot-message__content--error' : ''}`}
                     dangerouslySetInnerHTML={{ __html: message.text }}
                   />
+                  {message.isError && message.retryText && (
+                    <div className="chatbot-message__error-actions">
+                      <button
+                        type="button"
+                        className="chatbot-retry-btn"
+                        onClick={() => sendMessage(message.retryText!)}
+                        disabled={isLoading}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="1 4 1 10 7 10" />
+                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                        </svg>
+                        Thử lại
+                      </button>
+                      <a
+                        href="tel:19001234"
+                        className="chatbot-hotline-btn"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                        Hotline
+                      </a>
+                    </div>
+                  )}
                   <div className="chatbot-message__time">
                     {new Date(message.timestamp).toLocaleTimeString('vi-VN', {
                       hour: '2-digit',

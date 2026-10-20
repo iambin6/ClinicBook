@@ -78,8 +78,8 @@ public class GeminiClient {
                 }
                 if (!text.isEmpty()) return text.toString().trim();
                 log.warn("Gemini returned no text for model {}", model);
-            } else if (result.status() != 404) {
-                // Changing models cannot fix invalid credentials, exhausted quota or transport errors.
+            } else if (result.status() == 400 || result.status() == 401 || result.status() == 403) {
+                // Changing models cannot fix invalid request payload or credentials.
                 return null;
             }
         }

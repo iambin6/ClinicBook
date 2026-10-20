@@ -18,7 +18,7 @@ public class RagChatService {
     private final ClinicKnowledgeService knowledgeService;
 
     private static final String UNAVAILABLE_MESSAGE =
-            "Xin lỗi bạn, trợ lý AI hiện chưa thể trả lời. Vui lòng thử lại sau hoặc liên hệ phòng khám để được hỗ trợ đặt lịch.";
+            "Xin lỗi bạn, trợ lý AI hiện đang bận hoặc gián đoạn kết nối tạm thời. Vui lòng bấm thử lại hoặc liên hệ hotline phòng khám để được hỗ trợ đặt lịch nhanh nhất.";
 
     /* =================== PUBLIC ENTRYPOINTS =================== */
 

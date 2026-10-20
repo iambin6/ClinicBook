@@ -5,6 +5,8 @@ export interface ChatMessage {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  isError?: boolean;
+  retryText?: string;
 }
 
 export async function askChatbot(question: string): Promise<string> {
@@ -20,4 +22,3 @@ export async function askChatbot(question: string): Promise<string> {
     throw error;
   }
 }
-
