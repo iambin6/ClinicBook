@@ -14,6 +14,13 @@ function positiveId(value: string | null): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
+const STEPS = [
+  { step: 1, title: "Bác sĩ & Chuyên khoa" },
+  { step: 2, title: "Ngày & Ca khám" },
+  { step: 3, title: "Hồ sơ bệnh nhân" },
+  { step: 4, title: "Xác nhận & Đặt hẹn" },
+];
+
 export default function Appointment() {
   const { state, dispatch } = useAppt();
   const [sp, setSp] = useSearchParams();
@@ -113,20 +120,66 @@ export default function Appointment() {
     };
   }, [doctorIdParam, specialtyIdParam, dispatch]);
 
+  const currentStep = Math.min(Math.max(state.step || 1, 1), 4);
+  const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
+
   return (
     <Container className="appt-wrap py-4">
+      {/* Animated Modern Stepper */}
+      <div className="appt-stepper-container">
+        <div className="appt-stepper-track-wrap">
+          <div className="appt-stepper-line-bg" />
+          <div
+            className="appt-stepper-line-progress"
+            style={{ width: `${progressPercent}%` }}
+          />
+          <div className="appt-stepper-items">
+            {STEPS.map((s) => {
+              const isActive = state.step === s.step;
+              const isCompleted = state.step > s.step;
+              const isClickable = s.step < state.step;
+              return (
+                <button
+                  key={s.step}
+                  type="button"
+                  className={`appt-stepper-step ${isActive ? "is-active" : ""} ${
+                    isCompleted ? "is-completed" : ""
+                  } ${isClickable ? "is-clickable" : ""}`}
+                  onClick={() => {
+                    if (isClickable) {
+                      dispatch({ type: "SET_STEP", step: s.step });
+                    }
+                  }}
+                  disabled={!isClickable && !isActive}
+                  title={isClickable ? `Quay lại: ${s.title}` : undefined}
+                >
+                  <div className="appt-stepper-circle">
+                    {isCompleted ? (
+                      <span className="appt-stepper-check">✓</span>
+                    ) : (
+                      <span>{s.step}</span>
+                    )}
+                  </div>
+                  <span className="appt-stepper-label">{s.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {doctorError && <Alert variant="danger">{doctorError}</Alert>}
       {loadingDoctor ? (
         <div className="d-flex align-items-center gap-2 py-4" role="status">
           <Spinner size="sm" /> Đang tải thông tin bác sĩ…
         </div>
       ) : (
-        <>
+        <div key={state.step} className="appt-step-view">
           {state.step === 1 && <Step1 />}
           {state.step === 2 && <Step2 />}
           {state.step === 3 && <Step3 />}
           {state.step === 4 && <Step4 />}
-        </>
+        </div>
       )}
     </Container>
   );
