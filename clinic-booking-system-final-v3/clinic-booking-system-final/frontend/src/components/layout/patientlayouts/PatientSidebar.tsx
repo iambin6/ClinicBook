@@ -33,6 +33,12 @@ const Icons = {
       <path d="M6 12h.01M18 12h.01"/>
     </svg>
   ),
+  feedback: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      <polygon points="12 7 13.09 9.26 15.5 9.6 13.75 11.3 14.18 13.7 12 12.5 9.82 13.7 10.25 11.3 8.5 9.6 10.91 9.26 12 7" fill="currentColor"/>
+    </svg>
+  ),
 };
 
 const navItems = [
@@ -41,6 +47,7 @@ const navItems = [
   { to: "/patient/history", label: "History", icon: Icons.history },
   { to: "/patient/events", label: "Event", icon: Icons.events },
   { to: "/patient/vouchers", label: "Voucher", icon: Icons.vouchers },
+  { to: "/patient/feedback", label: "Feedback", icon: Icons.feedback },
 ];
 
 export default function PatientSidebar() {

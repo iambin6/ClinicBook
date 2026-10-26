@@ -130,6 +130,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/vouchers/user/{userId}").authenticated()
                         .requestMatchers(HttpMethod.POST, "/vouchers/{id}/use").authenticated()
 
+                        // Feedbacks
+                        .requestMatchers(HttpMethod.GET, "/feedbacks/public", "/feedbacks/stats").permitAll()
+                        .requestMatchers("/feedbacks/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth -> oauth

@@ -21,6 +21,7 @@ import PatientAppointments from '../pages/patient/PatientAppointments';
 import PatientHistory from '../pages/patient/PatientHistory';
 import PatientEvents from '../pages/patient/PatientEvents';
 import PatientVouchers from '../pages/patient/PatientVouchers';
+import PatientFeedback from '../pages/patient/PatientFeedback';
 
 //Trang bị lỗi
 import NotFound from '../components/errors/NotFound';
@@ -86,6 +87,7 @@ export default function AppRoutes() {
               <Route path="/patient/history" element={<PatientHistory />} />
               <Route path="/patient/events" element={<PatientEvents />} />
               <Route path="/patient/vouchers" element={<PatientVouchers />} />
+              <Route path="/patient/feedback" element={<PatientFeedback />} />
             </Route>
             <Route
               path="/appointment"
