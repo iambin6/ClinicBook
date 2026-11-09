@@ -63,8 +63,9 @@ export default function Step4Review() {
   const surcharge = onlineSurchargePerPatient * billedPatients;
   const totalAmount = subtotal + surcharge;
 
-  const shiftSummaryText =
-    state.shiftLabel || state.shiftName || "Chưa chọn ca khám";
+  const shiftSummaryText = state.slotTimeLabel
+    ? (state.shiftLabel || state.shiftName || "Ca khám") + " (" + state.slotTimeLabel + ")"
+    : state.shiftLabel || state.shiftName || "Chưa chọn ca khám";
 
   const totalLabel = useMemo(
     () => formatCurrency(totalAmount),
@@ -133,6 +134,7 @@ export default function Step4Review() {
             type: appointmentType,
           },
           shiftId: state.shiftId ?? undefined,
+          slotId: state.slotId ?? undefined,
           patients: patientsPayload,
         },
         {

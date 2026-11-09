@@ -17,6 +17,7 @@ type ShiftOption = {
   label: string;
   availableSlots: number;
   totalSlots: number;
+  slots: DoctorShiftSlot[];
 };
 
 type CalendarCell = {
@@ -118,6 +119,7 @@ function normalizeShift(source: DoctorShift): ShiftOption {
     label,
     availableSlots: Math.max(0, availableSlots),
     totalSlots: Math.max(totalSlots, 0),
+    slots: slots.sort((a, b) => (a.slotNumber ?? 0) - (b.slotNumber ?? 0)),
   };
 }
 
@@ -231,7 +233,17 @@ export default function Step2DateTime() {
     return weeks;
   }, [state.dateISO, visibleMonth]);
 
-  const canNext = Boolean(state.appointmentType && state.dateISO && state.shiftId);
+  const selectedShift = useMemo(() => {
+    return shifts.find((s) => s.id === state.shiftId);
+  }, [shifts, state.shiftId]);
+
+  const hasSlots = (selectedShift?.slots?.length ?? 0) > 0;
+  const canNext = Boolean(
+    state.appointmentType &&
+    state.dateISO &&
+    state.shiftId &&
+    (!hasSlots || state.slotId)
+  );
 
   const handleSelectDate = useCallback(
     (cell: CalendarCell) => {
@@ -448,39 +460,90 @@ export default function Step2DateTime() {
                                 : "Evening"}
                             </div>
                             <div className="appt-time-chip-group">
-                              {items.map((slot) => {
-                                const active = state.shiftId === slot.id;
-                                const disabled = slot.availableSlots <= 0;
+                              {items.map((shiftItem) => {
+                                const active = state.shiftId === shiftItem.id;
+                                const disabled = shiftItem.availableSlots <= 0;
                                 return (
-                                  <button
-                                    key={slot.id}
-                                    className={[
-                                      "slot-chip",
-                                      active ? "active" : "",
-                                      disabled ? "disabled" : "",
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" ")}
-                                    disabled={disabled}
-                                    onClick={() => {
-                                      if (disabled) return;
-                                      dispatch({
-                                        type: "SET_SHIFT",
-                                        id: slot.id,
-                                        name: slot.label,
-                                        start: slot.start !== "--:--" ? slot.start : undefined,
-                                        end: slot.end !== "--:--" ? slot.end : undefined,
-                                        shiftName: slot.name,
-                                        availableSlots: slot.availableSlots,
-                                        totalSlots: slot.totalSlots,
-                                      });
-                                    }}
-                                  >
-                                    <div>{slot.label}</div>
-                                    <small>
-                                      {slot.availableSlots}/{slot.totalSlots} chỗ trống
-                                    </small>
-                                  </button>
+                                  <div key={shiftItem.id} className="shift-card-wrapper w-100">
+                                    <button
+                                      type="button"
+                                      className={[
+                                        "slot-chip",
+                                        active ? "active" : "",
+                                        disabled ? "disabled" : "",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                      disabled={disabled}
+                                      onClick={() => {
+                                        if (disabled) return;
+                                        dispatch({
+                                          type: "SET_SHIFT",
+                                          id: shiftItem.id,
+                                          name: shiftItem.label,
+                                          start: shiftItem.start !== "--:--" ? shiftItem.start : undefined,
+                                          end: shiftItem.end !== "--:--" ? shiftItem.end : undefined,
+                                          shiftName: shiftItem.name,
+                                          availableSlots: shiftItem.availableSlots,
+                                          totalSlots: shiftItem.totalSlots,
+                                        });
+                                      }}
+                                    >
+                                      <div className="d-flex justify-content-between align-items-center">
+                                        <span className="fw-bold">{shiftItem.label}</span>
+                                        <span className={active ? "badge bg-white text-primary" : "badge bg-primary-subtle text-primary"}>
+                                          {shiftItem.availableSlots}/{shiftItem.totalSlots} chỗ trống
+                                        </span>
+                                      </div>
+                                      <small className="mt-1 opacity-75">
+                                        Lượt khám 30 phút • Nhấp để chọn khung giờ
+                                      </small>
+                                    </button>
+
+                                    {active && shiftItem.slots && shiftItem.slots.length > 0 && (
+                                      <div className="slot-subgrid-panel mt-2 p-3">
+                                        <div className="d-flex align-items-center justify-content-between mb-2">
+                                          <span className="fw-semibold text-secondary small">
+                                            Chọn khung giờ vào khám (30 phút/lượt):
+                                          </span>
+                                          {state.slotTimeLabel && (
+                                            <span className="badge bg-success">
+                                              Đã chọn: {state.slotTimeLabel}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="slot-grid-30m">
+                                          {shiftItem.slots.map((s) => {
+                                            const isAvail = (s.status ?? "").toUpperCase() === "AVAILABLE" || (s.status ?? "").toUpperCase() === "FREE";
+                                            const isSelected = state.slotId === s.id;
+                                            const formatTime = (t?: string) => (t ? t.slice(0, 5) : "");
+                                            const slotLabel = `${formatTime(s.startTime)} - ${formatTime(s.endTime)}`;
+
+                                            return (
+                                              <button
+                                                key={s.id}
+                                                type="button"
+                                                disabled={!isAvail}
+                                                className={`slot-time-btn ${isSelected ? "selected" : ""} ${!isAvail ? "booked" : ""}`}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (!isAvail) return;
+                                                  dispatch({
+                                                    type: "SET_SLOT",
+                                                    slotId: s.id,
+                                                    timeLabel: slotLabel,
+                                                  });
+                                                }}
+                                              >
+                                                <span className="time-text">{slotLabel}</span>
+                                                <span className="status-text">{isAvail ? "Còn trống" : "Đã đặt"}</span>
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 );
                               })}
                             </div>
@@ -496,6 +559,11 @@ export default function Step2DateTime() {
         </Col>
       </Row>
 
+            {state.shiftId && hasSlots && !state.slotId && (
+        <div className="text-danger small mt-2 mb-2 text-center fw-medium">
+          * Vui lòng chọn một khung giờ khám 30 phút cụ thể ở trên để tiếp tục.
+        </div>
+      )}
       <div className="appt-bottom">
         <button className="btn-back" onClick={() => dispatch({ type: "SET_STEP", step: 1 })}>
           Quay lại

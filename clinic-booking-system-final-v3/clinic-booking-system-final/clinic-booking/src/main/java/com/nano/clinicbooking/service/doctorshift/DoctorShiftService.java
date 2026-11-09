@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -76,22 +77,27 @@ public class DoctorShiftService implements IDoctorShiftService {
      * 🕒 Sinh slot 45p + buffer 15p trong ca
      */
     private void createSlotsForShift(DoctorShift shift) {
+        int duration = (shift.getSlotDurationMinutes() != null && shift.getSlotDurationMinutes() > 0)
+                ? shift.getSlotDurationMinutes() : 30;
+        int buffer = (shift.getBufferMinutes() != null && shift.getBufferMinutes() >= 0)
+                ? shift.getBufferMinutes() : 0;
+        int step = duration + buffer;
+
         LocalTime current = shift.getStartTime();
         int slotNumber = 1;
 
-        while (current.plusMinutes(45).isBefore(shift.getEndTime()) ||
-                current.plusMinutes(45).equals(shift.getEndTime())) {
+        while (current.plusMinutes(duration).isBefore(shift.getEndTime()) ||
+                current.plusMinutes(duration).equals(shift.getEndTime())) {
 
             ShiftSlot slot = new ShiftSlot();
             slot.setSlotNumber(slotNumber++);
             slot.setStartTime(current);
-            slot.setEndTime(current.plusMinutes(45));
+            slot.setEndTime(current.plusMinutes(duration));
             slot.setStatus(SlotStatus.AVAILABLE);
             slot.setShift(shift);
 
             slotRepo.save(slot);
-            // +15 phút buffer
-            current = current.plusMinutes(60);
+            current = current.plusMinutes(step);
         }
     }
 
@@ -132,7 +138,7 @@ public class DoctorShiftService implements IDoctorShiftService {
             dto.setNote(shift.getNote());
 
             // ✅ Gắn danh sách slot và appointment
-            dto.setSlots(shift.getSlots().stream().map(slot -> {
+            dto.setSlots(shift.getSlots().stream().sorted(Comparator.comparing(ShiftSlot::getSlotNumber, Comparator.nullsLast(Comparator.naturalOrder()))).map(slot -> {
                 ShiftSlotDto s = new ShiftSlotDto();
                 s.setId(slot.getId());
                 s.setSlotNumber(slot.getSlotNumber());

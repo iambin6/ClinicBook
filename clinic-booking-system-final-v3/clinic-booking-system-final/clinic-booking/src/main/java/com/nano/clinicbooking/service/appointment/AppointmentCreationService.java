@@ -83,30 +83,41 @@ public class AppointmentCreationService {
             DoctorShift shift = shiftRepo.findById(request.getShiftId())
                     .orElseThrow(() -> new ResourceNotFoundException("Shift not found"));
 
-            int maxPerSlot = shift.getMaxPatients();
-
-            // ✅ Lấy toàn bộ slot của ca
-            List<ShiftSlot> slots = slotRepo.findByShiftIdOrderBySlotNumberAsc(shift.getId());
-            if (slots.isEmpty()) {
-                throw new IllegalStateException("Ca khám này chưa có slot nào!");
-            }
-
-            // ✅ Tính số bệnh nhân của cuộc hẹn mới
-            int newPatients = (request.getPatients() == null ? 1 : request.getPatients().size() + 1);
-
-            // ✅ Tìm slot đầu tiên còn chỗ trống
+            int maxPerSlot = (shift.getMaxPatients() != null && shift.getMaxPatients() > 0) ? shift.getMaxPatients() : 1;
             ShiftSlot targetSlot = null;
-            for (ShiftSlot s : slots) {
-                // Đếm tổng số bệnh nhân trong slot này
-                long currentPatients = appointmentRepo.findAll().stream()
-                        .filter(a -> a.getSlot() != null && Objects.equals(a.getSlot().getId(), s.getId()))
-                        .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
-                        .mapToLong(a -> a.getPatientInfos().size() + 1)
-                        .sum();
 
-                if (currentPatients + newPatients <= maxPerSlot) {
-                    targetSlot = s;
-                    break;
+            if (request.getSlotId() != null) {
+                ShiftSlot chosen = slotRepo.findById(request.getSlotId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Khung giờ khám không tồn tại"));
+
+                if (chosen.getShift() == null || !Objects.equals(chosen.getShift().getId(), shift.getId())) {
+                    throw new IllegalStateException("Khung giờ đã chọn không thuộc ca khám này!");
+                }
+
+                if (chosen.getStatus() == SlotStatus.BOOKED) {
+                    throw new IllegalStateException("Khung giờ này đã có người đặt trước. Vui lòng chọn khung giờ khác!");
+                }
+
+                targetSlot = chosen;
+            } else {
+                List<ShiftSlot> slots = slotRepo.findByShiftIdOrderBySlotNumberAsc(shift.getId());
+                if (slots.isEmpty()) {
+                    throw new IllegalStateException("Ca khám này chưa có slot nào!");
+                }
+
+                int newPatients = (request.getPatients() == null ? 1 : request.getPatients().size() + 1);
+
+                for (ShiftSlot s : slots) {
+                    long currentPatients = appointmentRepo.findAll().stream()
+                            .filter(a -> a.getSlot() != null && Objects.equals(a.getSlot().getId(), s.getId()))
+                            .filter(a -> a.getStatus() != AppointmentStatus.CANCELLED)
+                            .mapToLong(a -> a.getPatientInfos().size() + 1)
+                            .sum();
+
+                    if (s.getStatus() == SlotStatus.AVAILABLE && currentPatients + newPatients <= maxPerSlot) {
+                        targetSlot = s;
+                        break;
+                    }
                 }
             }
 
@@ -117,7 +128,6 @@ public class AppointmentCreationService {
                 );
             }
 
-            // ✅ Gán slot này cho appointment
             targetSlot.setStatus(SlotStatus.BOOKED);
             targetSlot.setAppointment(appointment);
             slotRepo.save(targetSlot);

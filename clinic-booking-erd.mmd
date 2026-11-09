@@ -1,0 +1,218 @@
+erDiagram
+    users {
+        BIGINT id PK
+        VARCHAR full_name
+        VARCHAR email UK
+        VARCHAR user_type
+        DATETIME created_at
+    }
+    doctor {
+        BIGINT doctor_id PK, FK
+        BIGINT specialty_id FK
+        VARCHAR degree
+        TEXT description
+        VARCHAR experience
+        BOOLEAN is_vip
+        DOUBLE consultation_fee
+    }
+    patient {
+        BIGINT patient_id PK, FK
+    }
+    admin {
+        BIGINT admin_id PK, FK
+    }
+    receptionist {
+        BIGINT receptionist_id PK, FK
+    }
+    specialties {
+        BIGINT id PK
+        VARCHAR name UK
+        TEXT description
+    }
+    appointments {
+        BIGINT id PK
+        VARCHAR appointment_no UK
+        BIGINT patient_id FK
+        BIGINT doctor_id FK
+        BIGINT specialty_id FK
+        BIGINT shift_id FK
+        BIGINT confirmed_by FK
+        BIGINT slot_id FK
+        DATE appointment_date
+        TIME appointment_time
+        VARCHAR status
+        VARCHAR type
+    }
+    doctor_shifts {
+        BIGINT id PK
+        BIGINT doctor_id FK
+        DATE date
+        VARCHAR shift
+        TIME start_time
+        TIME end_time
+    }
+    shift_slots {
+        BIGINT id PK
+        BIGINT shift_id FK
+        INT slot_number
+        TIME start_time
+        TIME end_time
+        VARCHAR status
+    }
+    patient_information {
+        BIGINT id PK
+        BIGINT owner_id FK
+        BIGINT appointment_id FK
+        VARCHAR full_name
+        VARCHAR phone_number
+        VARCHAR relationship
+    }
+    prescriptions {
+        BIGINT id PK
+        BIGINT appointment_id FK
+        VARCHAR medicine_name
+        VARCHAR dosage
+        VARCHAR duration
+    }
+    payment_transactions {
+        BIGINT id PK
+        BIGINT appointment_id FK
+        VARCHAR transaction_no
+        VARCHAR amount
+        VARCHAR transaction_status
+        DATETIME pay_date
+    }
+    pending_booking_requests {
+        BIGINT id PK
+        BIGINT patient_id
+        BIGINT doctor_id
+        BIGINT specialty_id
+        BIGINT shift_id
+        BIGINT amount
+        VARCHAR payment_reference
+        VARCHAR status
+        TEXT booking_data
+        TEXT reason
+        DATETIME created_at
+        DATETIME expires_at
+    }
+    shift_cancel_request {
+        BIGINT id PK
+        BIGINT doctor_id FK
+        BIGINT shift_id FK
+        BIGINT approved_by FK
+        VARCHAR status
+        VARCHAR reason
+    }
+    images {
+        BIGINT id PK
+        BIGINT specialty_id FK
+        BIGINT doctor_id FK
+        VARCHAR image_url
+    }
+    doctor_images {
+        BIGINT id PK
+        BIGINT doctor_id FK
+        VARCHAR file_name
+        VARCHAR content_type
+        BIGINT size
+        LONGBLOB data
+    }
+    events {
+        BIGINT id PK
+        BIGINT voucher_id FK
+        VARCHAR title
+        DATETIME start_date
+        DATETIME end_date
+        BOOLEAN is_enabled
+    }
+    user_events {
+        BIGINT id PK
+        BIGINT user_id FK
+        BIGINT event_id FK
+        DATETIME registered_at
+        VARCHAR status
+    }
+    vouchers {
+        BIGINT id PK
+        VARCHAR code UK
+        VARCHAR name
+        DOUBLE discount_value
+        VARCHAR type
+        DATETIME expiry_date
+    }
+    user_vouchers {
+        BIGINT id PK
+        BIGINT user_id FK
+        BIGINT voucher_id FK
+        DATETIME issued_at
+        BOOLEAN used
+    }
+    group_health_request {
+        BIGINT id PK
+        BIGINT created_by FK
+        VARCHAR group_name
+        DATE preferred_date
+        VARCHAR status
+        DATETIME created_at
+    }
+    group_health_assignments {
+        BIGINT id PK
+        BIGINT request_id FK
+        BIGINT specialty_id FK
+        BIGINT doctor_id FK
+        BIGINT shift_id FK
+        INT capacity_allocated
+        VARCHAR result_status
+    }
+    rss_sources {
+        BIGINT id PK
+        VARCHAR name
+        VARCHAR url UK
+        VARCHAR category
+        VARCHAR status
+    }
+    news {
+        BIGINT id PK
+        BIGINT source_id FK
+        VARCHAR title
+        VARCHAR link
+        DATETIME pub_date
+    }
+
+    users ||--o| doctor : "JOINED subtype"
+    users ||--o| patient : "JOINED subtype"
+    users ||--o| admin : "JOINED subtype"
+    users ||--o| receptionist : "JOINED subtype"
+    specialties ||--o{ doctor : specialty_id
+    users o|--o{ appointments : patient_id
+    doctor o|--o{ appointments : doctor_id
+    specialties ||--o{ appointments : specialty_id
+    doctor_shifts o|--o{ appointments : shift_id
+    users o|--o{ appointments : confirmed_by
+    shift_slots o|--o| appointments : slot_id
+    doctor ||--o{ doctor_shifts : doctor_id
+    doctor_shifts o|--o{ shift_slots : shift_id
+    users o|--o{ patient_information : owner_id
+    appointments o|--o{ patient_information : appointment_id
+    appointments ||--o{ prescriptions : appointment_id
+    appointments o|--o{ payment_transactions : appointment_id
+    doctor o|--o{ shift_cancel_request : doctor_id
+    doctor_shifts o|--o{ shift_cancel_request : shift_id
+    users o|--o{ shift_cancel_request : approved_by
+    specialties o|--o{ images : specialty_id
+    doctor o|--o{ images : doctor_id
+    doctor ||--o{ doctor_images : doctor_id
+    vouchers o|--o{ events : voucher_id
+    users o|--o{ user_events : user_id
+    events o|--o{ user_events : event_id
+    users ||--o{ user_vouchers : user_id
+    vouchers ||--o{ user_vouchers : voucher_id
+    users o|--o{ group_health_request : created_by
+    group_health_request o|--o{ group_health_assignments : request_id
+    specialties o|--o{ group_health_assignments : specialty_id
+    doctor o|--o{ group_health_assignments : doctor_id
+    doctor_shifts o|--o{ group_health_assignments : shift_id
+    rss_sources o|--o{ news : source_id
+
+    %% pending_booking_requests has ID-like columns but no database foreign-key constraints.

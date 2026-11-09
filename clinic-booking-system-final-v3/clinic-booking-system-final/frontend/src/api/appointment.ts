@@ -270,6 +270,7 @@ export type BookAppointmentPayload = {
   };
   patients?: BookAppointmentPatientPayload[];
   shiftId?: number | null;
+  slotId?: number | null;
 };
 
 export async function bookAppointment(

@@ -30,6 +30,8 @@ type State = {
   shiftLabel?: string;
   shiftAvailableSlots?: number;
   shiftTotalSlots?: number;
+  slotId: number | null;
+  slotTimeLabel?: string;
   patientSelections: PatientSelection[];
 };
 
@@ -69,6 +71,7 @@ type Action =
       availableSlots?: number;
       totalSlots?: number;
     }
+  | { type: "SET_SLOT"; slotId: number | null; timeLabel?: string }
   | { type: "SET_PATIENT_SELECTIONS"; value: PatientSelection[] }
   | { type: "RESET" };
 
@@ -79,6 +82,7 @@ const initial: State = {
   appointmentType: "",
   dateISO: "",
   shiftId: null,
+  slotId: null,
   patientSelections: [],
 };
 
@@ -172,6 +176,8 @@ function reducer(state: State, a: Action): State {
         shiftLabel: undefined,
         shiftAvailableSlots: undefined,
         shiftTotalSlots: undefined,
+        slotId: null,
+        slotTimeLabel: undefined,
         patientSelections: [],
       };
     case "SET_SHIFT":
@@ -184,8 +190,12 @@ function reducer(state: State, a: Action): State {
           (a.start && a.end ? `${a.start} - ${a.end}` : state.shiftLabel),
         shiftAvailableSlots: a.availableSlots,
         shiftTotalSlots: a.totalSlots,
+        slotId: null,
+        slotTimeLabel: undefined,
         patientSelections: [],
       };
+    case "SET_SLOT":
+      return { ...state, slotId: a.slotId, slotTimeLabel: a.timeLabel };
     case "SET_PATIENT_SELECTIONS":
       return { ...state, patientSelections: a.value };
     case "RESET":

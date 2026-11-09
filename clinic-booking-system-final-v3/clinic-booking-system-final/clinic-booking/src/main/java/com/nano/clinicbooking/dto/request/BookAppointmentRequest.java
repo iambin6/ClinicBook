@@ -14,4 +14,5 @@ public class BookAppointmentRequest {
     private Appointment appointment;
     private List<PatientInformation> patients;
     private Long shiftId;
+    private Long slotId;
 }

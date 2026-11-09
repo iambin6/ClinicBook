@@ -342,7 +342,7 @@ export default function Step3Patients() {
                 <div>
                   <div className="booking-info__label">Ca khám</div>
                   <div className="booking-info__value">
-                    {state.shiftLabel || state.shiftName || "Khám online"}
+                    {(state.shiftLabel || state.shiftName || "Khám online") + (state.slotTimeLabel ? " (" + state.slotTimeLabel + ")" : "")}
                   </div>
                 </div>
                 <div>

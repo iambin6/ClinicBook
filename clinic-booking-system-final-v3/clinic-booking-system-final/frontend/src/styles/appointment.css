@@ -893,3 +893,92 @@
   }
 }
 
+
+/* =========================================
+   30-minute Slot Selection (Hướng 2)
+   ========================================= */
+.shift-card-wrapper {
+  margin-bottom: 12px;
+}
+
+.slot-subgrid-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.slot-grid-30m {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 8px;
+}
+
+.slot-time-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.slot-time-btn:hover:not(:disabled):not(.selected) {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
+}
+
+.slot-time-btn .time-text {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.slot-time-btn .status-text {
+  font-size: 11px;
+  color: #10b981;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.slot-time-btn.selected {
+  border-color: #0e82fd;
+  background: #0e82fd;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(14, 130, 253, 0.35);
+  transform: scale(1.02);
+}
+
+.slot-time-btn.selected .time-text {
+  color: #ffffff;
+}
+
+.slot-time-btn.selected .status-text {
+  color: #dbeafe;
+}
+
+.slot-time-btn.booked,
+.slot-time-btn:disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.slot-time-btn.booked .status-text,
+.slot-time-btn:disabled .status-text {
+  color: #ef4444;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

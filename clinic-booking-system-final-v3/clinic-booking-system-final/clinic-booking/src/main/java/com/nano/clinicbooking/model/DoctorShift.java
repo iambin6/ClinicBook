@@ -43,8 +43,8 @@ public class DoctorShift {
 
     private String note;
 
-    private Integer slotDurationMinutes = 45;
-    private Integer bufferMinutes = 15;
+    private Integer slotDurationMinutes = 30;
+    private Integer bufferMinutes = 0;
 
     @OneToMany(mappedBy = "shift", cascade = CascadeType.ALL)
     private List<ShiftSlot> slots = new ArrayList<>();
@@ -59,4 +59,5 @@ public class DoctorShift {
     @JsonIgnore
     private List<Appointment> appointments = new ArrayList<>();
 }
+
 
